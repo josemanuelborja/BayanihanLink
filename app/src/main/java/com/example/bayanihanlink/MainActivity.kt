@@ -7,6 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,7 +25,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             BayanihanLinkTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
+                Surface(modifier = Modifier.fillMaxSize() .statusBarsPadding()) {
 
                     BayanihanLinkApp()
                 }
@@ -34,7 +36,8 @@ class MainActivity : ComponentActivity() {
 private enum class AppScreen {
     Splash,
     Onboarding,
-    Login
+    Login,
+    Register
 }
 
 @Composable
@@ -65,12 +68,32 @@ fun BayanihanLinkApp() {
 
                 },
                 onCreateAccount = {
-
+                    currentScreen = AppScreen.Register
                 },
                 onForgotPassword = {
 
                 },
                 onAdminLogin = {
+
+                }
+            )
+            AppScreen.Register -> RegisterScreen(
+                onBack = {
+
+                    currentScreen = AppScreen.Login
+                },
+                onRegister = { formData ->
+
+                    currentScreen = AppScreen.Login
+                },
+                onLogIn = {
+
+                    currentScreen = AppScreen.Login
+                },
+                onTermsClick = {
+
+                },
+                onPrivacyClick = {
 
                 }
             )
