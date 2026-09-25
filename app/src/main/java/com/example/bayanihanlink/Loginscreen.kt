@@ -85,7 +85,6 @@ fun LoginScreen(
                         .background(Color.White, RoundedCornerShape(20.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Replace R.drawable.ic_logo with your actual logo drawable name
                     Image(
                         painter = painterResource(id = R.drawable.ic_logo),
                         contentDescription = "BayanihanLink logo",
@@ -263,7 +262,6 @@ fun LoginScreen(
     }
 }
 
-/** Small helper so text links don't show a ripple/box highlight like a button would. */
 @Composable
 private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier = this.then(
     Modifier.clickable(
