@@ -40,7 +40,8 @@ private enum class AppScreen {
     Register,
     Home,
     MyRequests,
-    Alerts
+    Alerts,
+    Profile
 }
 
 @Composable
@@ -111,7 +112,7 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.Alerts
                 },
                 onNavigateProfile = {
-
+                    currentScreen = AppScreen.Profile
                 }
             )
             AppScreen.MyRequests -> MyRequestsScreen(
@@ -125,7 +126,7 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.Alerts
                 },
                 onNavigateProfile = {
-
+                    currentScreen = AppScreen.Profile
                 }
             )
             AppScreen.Alerts -> AlertsScreen(
@@ -136,7 +137,40 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.MyRequests
                 },
                 onNavigateProfile = {
+                    currentScreen = AppScreen.Profile
+                }
+            )
+            AppScreen.Profile -> ProfileScreen(
+                onEditProfile = {
 
+                },
+                onChangePassword = {
+
+                },
+                onNotificationPreferences = {
+
+                },
+                onMyRequests = {
+                    currentScreen = AppScreen.MyRequests
+                },
+                onAboutBayanihanLink = {
+
+                },
+                onContactSupport = {
+
+                },
+                onLogOut = {
+                    // Logging out sends the user back to the Login screen.
+                    currentScreen = AppScreen.Login
+                },
+                onNavigateHome = {
+                    currentScreen = AppScreen.Home
+                },
+                onNavigateMyRequest = {
+                    currentScreen = AppScreen.MyRequests
+                },
+                onNavigateAlerts = {
+                    currentScreen = AppScreen.Alerts
                 }
             )
         }
