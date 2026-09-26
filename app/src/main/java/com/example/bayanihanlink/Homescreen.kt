@@ -84,18 +84,17 @@ private data class UpdateItem(
 fun HomeScreen(
     userName: String = "Maria Santos",
     onRequestAssistance: () -> Unit = {},
-    onViewRequestDetails: () -> Unit = {}
+    onViewRequestDetails: () -> Unit = {},
+    onNavigateMyRequest: () -> Unit = {},
+    onNavigateAlerts: () -> Unit = {},
+    onNavigateProfile: () -> Unit = {}
 ) {
-    // Which bottom tab is currently selected. Starts on Home.
-    var selectedTab by remember { mutableStateOf(HomeTab.HOME) }
-
-    // Scaffold = a ready-made screen "frame" that reserves space for a bottom bar
-    // (and can also hold a top bar, floating button, etc. if you need them later).
     Scaffold(
         bottomBar = {
             HomeBottomBar(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
+                onMyRequestClick = onNavigateMyRequest,
+                onAlertsClick = onNavigateAlerts,
+                onProfileClick = onNavigateProfile
             )
         }
     ) { innerPadding ->
@@ -181,9 +180,6 @@ private fun HomeHeader(userName: String) {
                 }
             }
         }
-
-        // Orange alert banner. Negative offset makes it "poke into" the
-        // curved bottom of the blue header, matching the screenshot.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -274,7 +270,6 @@ private fun ActiveRequestSection(onViewDetails: () -> Unit) {
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // currentStep = 3 means "Offered" is the active step (matches the screenshot)
             StepTracker(currentStep = 3)
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -470,39 +465,42 @@ private fun RecentUpdatesSection() {
 
 // ---------- Bottom navigation bar ----------
 @Composable
-private fun HomeBottomBar(selectedTab: HomeTab, onTabSelected: (HomeTab) -> Unit) {
+private fun HomeBottomBar(
+    onMyRequestClick: () -> Unit,
+    onAlertsClick: () -> Unit,
+    onProfileClick: () -> Unit
+) {
     NavigationBar(containerColor = Color.White) {
         NavigationBarItem(
-            selected = selectedTab == HomeTab.HOME,
-            onClick = { onTabSelected(HomeTab.HOME) },
+            selected = true,
+            onClick = { /* already on this screen */ },
             icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
             label = { Text("Home") },
             colors = NavigationBarItemDefaults.colors(selectedIconColor = AccentBlue, selectedTextColor = AccentBlue)
         )
         NavigationBarItem(
-            selected = selectedTab == HomeTab.MY_REQUEST,
-            onClick = { onTabSelected(HomeTab.MY_REQUEST) },
+            selected = false,
+            onClick = onMyRequestClick,
             icon = { Icon(Icons.Default.Description, contentDescription = "My Request") },
             label = { Text("My Request") },
             colors = NavigationBarItemDefaults.colors(selectedIconColor = AccentBlue, selectedTextColor = AccentBlue)
         )
         NavigationBarItem(
-            selected = selectedTab == HomeTab.ALERTS,
-            onClick = { onTabSelected(HomeTab.ALERTS) },
+            selected = false,
+            onClick = onAlertsClick,
             icon = { Icon(Icons.Default.Notifications, contentDescription = "Alerts") },
             label = { Text("Alerts") },
             colors = NavigationBarItemDefaults.colors(selectedIconColor = AccentBlue, selectedTextColor = AccentBlue)
         )
         NavigationBarItem(
-            selected = selectedTab == HomeTab.PROFILE,
-            onClick = { onTabSelected(HomeTab.PROFILE) },
+            selected = false,
+            onClick = onProfileClick,
             icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
             label = { Text("Profile") },
             colors = NavigationBarItemDefaults.colors(selectedIconColor = AccentBlue, selectedTextColor = AccentBlue)
         )
     }
 }
-
 // Small helper so text links (like "View Details ->") don't show a ripple box behind them.
 @Composable
 private fun Modifier.clickableSimple(onClick: () -> Unit): Modifier = this.clickable(

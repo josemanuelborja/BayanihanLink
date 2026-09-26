@@ -38,7 +38,8 @@ private enum class AppScreen {
     Onboarding,
     Login,
     Register,
-    Home
+    Home,
+    MyRequests
 }
 
 @Composable
@@ -102,7 +103,27 @@ fun BayanihanLinkApp() {
                 onRequestAssistance = {
 
                 },
-                onViewRequestDetails = {
+                onNavigateMyRequest = {
+                    currentScreen = AppScreen.MyRequests
+                },
+                onNavigateAlerts = {
+
+                },
+                onNavigateProfile = {
+
+                }
+            )
+            AppScreen.MyRequests -> MyRequestsScreen(
+                onViewDetails = { request ->
+
+                },
+                onNavigateHome = {
+                    currentScreen = AppScreen.Home
+                },
+                onNavigateAlerts = {
+
+                },
+                onNavigateProfile = {
 
                 }
             )
