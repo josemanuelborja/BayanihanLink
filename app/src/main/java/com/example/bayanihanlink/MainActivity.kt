@@ -37,7 +37,8 @@ private enum class AppScreen {
     Splash,
     Onboarding,
     Login,
-    Register
+    Register,
+    Home
 }
 
 @Composable
@@ -65,7 +66,7 @@ fun BayanihanLinkApp() {
             )
             AppScreen.Login -> LoginScreen(
                 onLogIn = { email, password ->
-
+                    currentScreen = AppScreen.Home
                 },
                 onCreateAccount = {
                     currentScreen = AppScreen.Register
@@ -94,6 +95,14 @@ fun BayanihanLinkApp() {
 
                 },
                 onPrivacyClick = {
+
+                }
+            )
+            AppScreen.Home -> HomeScreen(
+                onRequestAssistance = {
+
+                },
+                onViewRequestDetails = {
 
                 }
             )
