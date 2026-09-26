@@ -59,9 +59,6 @@ private val VerifiedBlueText = Color(0xFF2B49CC)
 private val CardGray = Color(0xFFF7F8FA)
 private val LabelGray = Color(0xFF8A8FA3)
 
-// The 4 tabs at the bottom of the screen.
-enum class HomeTab { HOME, MY_REQUEST, ALERTS, PROFILE }
-
 // One "step" in the request's progress (Submitted -> Verified -> Offered -> Assisted).
 private data class RequestStep(val label: String, val stepNumber: Int)
 
@@ -101,29 +98,34 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding) // leaves room so content isn't hidden behind the bottom bar
+                .padding(innerPadding)
                 .background(Color.White)
                 .verticalScroll(rememberScrollState())
         ) {
             HomeHeader(userName = userName)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = (-20).dp)
+                    .background(Color.White, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                    .padding(top = 20.dp)
+            ) {
+                RequestAssistanceCard(onClick = onRequestAssistance)
 
-            Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            RequestAssistanceCard(onClick = onRequestAssistance)
+                ActiveRequestSection(onViewDetails = onViewRequestDetails)
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            ActiveRequestSection(onViewDetails = onViewRequestDetails)
+                OverviewSection()
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            OverviewSection()
+                RecentUpdatesSection()
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            RecentUpdatesSection()
-
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
 }
@@ -139,59 +141,68 @@ private fun HomeHeader(userName: String) {
             .joinToString("") { it.first().uppercase() }
     }
 
-    Box {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    color = AccentBlue,
-                    shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
-                )
-                .padding(horizontal = 20.dp)
-                .padding(top = 20.dp, bottom = 36.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = AccentBlue
+            )
+            .padding(horizontal = 20.dp)
+            .padding(top = 20.dp, bottom = 44.dp) // extra bottom room for the white sheet to overlap into
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+            Column {
+                Text(
+                    text = "Good morning,",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = userName,
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            // Avatar circle with initials
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.25f)),
+                contentAlignment = Alignment.Center
             ) {
-                Column {
-                    Text(
-                        text = "Good morning,",
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontSize = 14.sp
-                    )
-                    Text(
-                        text = userName,
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                // Avatar circle with initials
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.25f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = initials, color = Color.White, fontWeight = FontWeight.Bold)
-                }
+                Text(text = initials, color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .offset(y = 24.dp)
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .background(AlertOrange, RoundedCornerShape(14.dp))
+                .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(14.dp))
                 .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
-            Icon(Icons.Default.Bolt, contentDescription = null, tint = Color.White)
-            Spacer(modifier = Modifier.width(10.dp))
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(AlertOrange, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Bolt,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(
                     text = "Typhoon Carina - Active",
@@ -201,7 +212,7 @@ private fun HomeHeader(userName: String) {
                 )
                 Text(
                     text = "Relief operations ongoing in your area",
-                    color = Color.White.copy(alpha = 0.9f),
+                    color = Color.White.copy(alpha = 0.85f),
                     fontSize = 12.sp
                 )
             }
@@ -462,8 +473,6 @@ private fun RecentUpdatesSection() {
         }
     }
 }
-
-// ---------- Bottom navigation bar ----------
 @Composable
 private fun HomeBottomBar(
     onMyRequestClick: () -> Unit,
@@ -501,6 +510,7 @@ private fun HomeBottomBar(
         )
     }
 }
+
 // Small helper so text links (like "View Details ->") don't show a ripple box behind them.
 @Composable
 private fun Modifier.clickableSimple(onClick: () -> Unit): Modifier = this.clickable(

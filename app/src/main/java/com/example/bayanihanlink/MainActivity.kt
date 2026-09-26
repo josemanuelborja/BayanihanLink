@@ -41,7 +41,8 @@ private enum class AppScreen {
     Home,
     MyRequests,
     Alerts,
-    Profile
+    Profile,
+    RequestAssistance
 }
 
 @Composable
@@ -103,7 +104,7 @@ fun BayanihanLinkApp() {
             )
             AppScreen.Home -> HomeScreen(
                 onRequestAssistance = {
-
+                    currentScreen = AppScreen.RequestAssistance
                 },
                 onNavigateMyRequest = {
                     currentScreen = AppScreen.MyRequests
@@ -171,6 +172,18 @@ fun BayanihanLinkApp() {
                 },
                 onNavigateAlerts = {
                     currentScreen = AppScreen.Alerts
+                }
+            )
+            AppScreen.RequestAssistance -> RequestAssistanceScreen(
+                onExit = {
+
+                    currentScreen = AppScreen.Home
+                },
+                onViewMyRequest = {
+                    currentScreen = AppScreen.MyRequests
+                },
+                onBackToHome = {
+                    currentScreen = AppScreen.Home
                 }
             )
         }
