@@ -42,12 +42,15 @@ private enum class AppScreen {
     MyRequests,
     Alerts,
     Profile,
-    RequestAssistance
+    RequestAssistance,
+    RequestDetails
 }
 
 @Composable
 fun BayanihanLinkApp() {
     var currentScreen by remember { mutableStateOf(AppScreen.Splash) }
+
+    var selectedRequestId by remember { mutableStateOf("#BL-000234") }
 
     Crossfade(
         targetState = currentScreen,
@@ -106,6 +109,10 @@ fun BayanihanLinkApp() {
                 onRequestAssistance = {
                     currentScreen = AppScreen.RequestAssistance
                 },
+                onViewRequestDetails = {
+                    selectedRequestId = "#BL-000234"
+                    currentScreen = AppScreen.RequestDetails
+                },
                 onNavigateMyRequest = {
                     currentScreen = AppScreen.MyRequests
                 },
@@ -118,7 +125,8 @@ fun BayanihanLinkApp() {
             )
             AppScreen.MyRequests -> MyRequestsScreen(
                 onViewDetails = { request ->
-
+                    selectedRequestId = request.id
+                    currentScreen = AppScreen.RequestDetails
                 },
                 onNavigateHome = {
                     currentScreen = AppScreen.Home
@@ -184,6 +192,12 @@ fun BayanihanLinkApp() {
                 },
                 onBackToHome = {
                     currentScreen = AppScreen.Home
+                }
+            )
+            AppScreen.RequestDetails -> RequestDetailsScreen(
+                requestId = selectedRequestId,
+                onBack = {
+                    currentScreen = AppScreen.MyRequests
                 }
             )
         }
