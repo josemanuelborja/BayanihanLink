@@ -47,7 +47,8 @@ private enum class AppScreen {
     Alerts,
     Profile,
     RequestAssistance,
-    RequestDetails
+    RequestDetails,
+    DonorHome
 }
 
 @Composable
@@ -60,6 +61,14 @@ fun BayanihanLinkApp() {
 
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    fun homeScreenForCurrentUser(): AppScreen {
+        return if (loggedInUser?.accountType == "DONOR_VOLUNTEER") {
+            AppScreen.DonorHome
+        } else {
+            AppScreen.Home
+        }
+    }
 
     Crossfade(
         targetState = currentScreen,
@@ -86,7 +95,11 @@ fun BayanihanLinkApp() {
                         try {
                             val user = RetrofitClient.api.login(LoginRequest(email, password))
                             loggedInUser = user
-                            currentScreen = AppScreen.Home
+                            currentScreen = if (user.accountType == "DONOR_VOLUNTEER") {
+                                AppScreen.DonorHome
+                            } else {
+                                AppScreen.Home
+                            }
                         } catch (error: Exception) {
                             Toast.makeText(context, readableErrorMessage(error), Toast.LENGTH_LONG).show()
                         }
@@ -167,7 +180,7 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.RequestDetails
                 },
                 onNavigateHome = {
-                    currentScreen = AppScreen.Home
+                    currentScreen = homeScreenForCurrentUser()
                 },
                 onNavigateAlerts = {
                     currentScreen = AppScreen.Alerts
@@ -178,7 +191,7 @@ fun BayanihanLinkApp() {
             )
             AppScreen.Alerts -> AlertsScreen(
                 onNavigateHome = {
-                    currentScreen = AppScreen.Home
+                    currentScreen = homeScreenForCurrentUser()
                 },
                 onNavigateMyRequest = {
                     currentScreen = AppScreen.MyRequests
@@ -212,7 +225,7 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.Login
                 },
                 onNavigateHome = {
-                    currentScreen = AppScreen.Home
+                    currentScreen = homeScreenForCurrentUser()
                 },
                 onNavigateMyRequest = {
                     currentScreen = AppScreen.MyRequests
@@ -223,20 +236,39 @@ fun BayanihanLinkApp() {
             )
             AppScreen.RequestAssistance -> RequestAssistanceScreen(
                 onExit = {
-
-                    currentScreen = AppScreen.Home
+                    currentScreen = homeScreenForCurrentUser()
                 },
                 onViewMyRequest = {
                     currentScreen = AppScreen.MyRequests
                 },
                 onBackToHome = {
-                    currentScreen = AppScreen.Home
+                    currentScreen = homeScreenForCurrentUser()
                 }
             )
             AppScreen.RequestDetails -> RequestDetailsScreen(
                 requestId = selectedRequestId,
                 onBack = {
-                    currentScreen = AppScreen.MyRequests
+                    currentScreen = if (loggedInUser?.accountType == "DONOR_VOLUNTEER") {
+                        AppScreen.DonorHome
+                    } else {
+                        AppScreen.MyRequests
+                    }
+                }
+            )
+            AppScreen.DonorHome -> DonorHomeScreen(
+                userName = loggedInUser?.fullName ?: "Guest",
+                onViewRequest = { needId ->
+                    selectedRequestId = needId
+                    currentScreen = AppScreen.RequestDetails
+                },
+                onNavigateMyOffers = {
+
+                },
+                onNavigateAlerts = {
+                    currentScreen = AppScreen.Alerts
+                },
+                onNavigateProfile = {
+                    currentScreen = AppScreen.Profile
                 }
             )
         }
