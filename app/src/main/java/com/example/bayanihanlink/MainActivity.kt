@@ -1,6 +1,7 @@
 package com.example.bayanihanlink
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,9 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.example.bayanihanlink.ui.theme.BayanihanLinkTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +56,11 @@ fun BayanihanLinkApp() {
 
     var selectedRequestId by remember { mutableStateOf("#BL-000234") }
 
+    var loggedInUser by remember { mutableStateOf<UserResponse?>(null) }
+
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
     Crossfade(
         targetState = currentScreen,
         animationSpec = tween(durationMillis = 500), // fade takes 0.5 seconds
@@ -73,7 +82,15 @@ fun BayanihanLinkApp() {
             )
             AppScreen.Login -> LoginScreen(
                 onLogIn = { email, password ->
-                    currentScreen = AppScreen.Home
+                    coroutineScope.launch {
+                        try {
+                            val user = RetrofitClient.api.login(LoginRequest(email, password))
+                            loggedInUser = user
+                            currentScreen = AppScreen.Home
+                        } catch (error: Exception) {
+                            Toast.makeText(context, readableErrorMessage(error), Toast.LENGTH_LONG).show()
+                        }
+                    }
                 },
                 onCreateAccount = {
                     currentScreen = AppScreen.Register
@@ -91,8 +108,28 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.Login
                 },
                 onRegister = { formData ->
-
-                    currentScreen = AppScreen.Login
+                    if (formData.accountType == null) {
+                        Toast.makeText(context, "Please select an account type.", Toast.LENGTH_LONG).show()
+                    } else {
+                        coroutineScope.launch {
+                            try {
+                                RetrofitClient.api.register(
+                                    RegisterRequest(
+                                        fullName = formData.fullName,
+                                        email = formData.email,
+                                        password = formData.password,
+                                        contactNumber = formData.contactNumber,
+                                        address = formData.address,
+                                        accountType = formData.accountType.name
+                                    )
+                                )
+                                Toast.makeText(context, "Account created! Please log in.", Toast.LENGTH_LONG).show()
+                                currentScreen = AppScreen.Login
+                            } catch (error: Exception) {
+                                Toast.makeText(context, readableErrorMessage(error), Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
                 },
                 onLogIn = {
 
@@ -106,6 +143,7 @@ fun BayanihanLinkApp() {
                 }
             )
             AppScreen.Home -> HomeScreen(
+                userName = loggedInUser?.fullName ?: "Maria Santos",
                 onRequestAssistance = {
                     currentScreen = AppScreen.RequestAssistance
                 },
@@ -150,6 +188,7 @@ fun BayanihanLinkApp() {
                 }
             )
             AppScreen.Profile -> ProfileScreen(
+                user = loggedInUser.toUserProfile(),
                 onEditProfile = {
 
                 },
@@ -202,4 +241,34 @@ fun BayanihanLinkApp() {
             )
         }
     }
+}
+
+private fun UserResponse?.toUserProfile(): UserProfile {
+    if (this == null) {
+        return UserProfile(
+            fullName = "",
+            email = "",
+            contactNumber = "",
+            address = "",
+            accountType = "",
+            totalRequests = 0,
+            verifiedRequests = 0,
+            completedRequests = 0
+        )
+    }
+
+    return UserProfile(
+        fullName = fullName,
+        email = email,
+        contactNumber = contactNumber,
+        address = address,
+        accountType = when (accountType) {
+            "AFFECTED_INDIVIDUAL" -> "Affected Individual"
+            "DONOR_VOLUNTEER" -> "Donor / Volunteer"
+            else -> accountType
+        },
+        totalRequests = 0,
+        verifiedRequests = 0,
+        completedRequests = 0
+    )
 }

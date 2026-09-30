@@ -1,5 +1,6 @@
 package com.example.bayanihanlink
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -53,11 +55,11 @@ private val FieldBackground = Color(0xFFF7F8FA)
 private val FieldBorder = Color(0xFFE3E5EC)
 private val LabelGray = Color(0xFF8A8FA3)
 
+// The two account types the user can pick from.
 enum class AccountType {
     AFFECTED_INDIVIDUAL,
     DONOR_VOLUNTEER
 }
-
 data class RegisterFormData(
     val fullName: String,
     val email: String,
@@ -85,7 +87,8 @@ fun RegisterScreen(
     var selectedAccountType by remember { mutableStateOf<AccountType?>(null) }
     var agreedToTerms by remember { mutableStateOf(false) }
 
-    // A Column that scrolls, since this form is taller than most phone screens.
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -218,7 +221,7 @@ fun RegisterScreen(
                     withStyle(SpanStyle(color = Color(0xFF5A5F73))) {
                         append("I agree to the ")
                     }
-                    // "TERMS" tag marks this part as clickable and links it to onTermsClick
+
                     pushStringAnnotation(tag = "TERMS", annotation = "terms")
                     withStyle(SpanStyle(color = AccentBlue, fontWeight = FontWeight.SemiBold)) {
                         append("Terms and Condition")
@@ -227,7 +230,7 @@ fun RegisterScreen(
                     withStyle(SpanStyle(color = Color(0xFF5A5F73))) {
                         append(" and ")
                     }
-                    // "PRIVACY" tag marks this part as clickable and links it to onPrivacyClick
+
                     pushStringAnnotation(tag = "PRIVACY", annotation = "privacy")
                     withStyle(SpanStyle(color = AccentBlue, fontWeight = FontWeight.SemiBold)) {
                         append("Privacy Policy")
@@ -257,23 +260,54 @@ fun RegisterScreen(
 
             Button(
                 onClick = {
-                    onRegister(
-                        RegisterFormData(
-                            fullName = fullName,
-                            email = email,
-                            password = password,
-                            confirmPassword = confirmPassword,
-                            contactNumber = contactNumber,
-                            address = address,
-                            accountType = selectedAccountType
+                    val errorMessage: String? = when {
+                        fullName.trim().isEmpty() ->
+                            "Please enter your full name."
+                        email.trim().isEmpty() ->
+                            "Please enter your email address."
+                        !email.contains("@") || !email.contains(".") ->
+                            "Please enter a valid email address."
+                        password.isEmpty() ->
+                            "Please enter a password."
+                        password.length < 6 ->
+                            "Password must be at least 6 characters."
+                        confirmPassword != password ->
+                            "Passwords do not match."
+                        contactNumber.trim().isEmpty() ->
+                            "Please enter your contact number."
+                        address.trim().isEmpty() ->
+                            "Please enter your address."
+                        selectedAccountType == null ->
+                            "Please select an account type."
+                        else -> null
+                    }
+
+                    if (errorMessage != null) {
+                        Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+                    } else {
+                        onRegister(
+                            RegisterFormData(
+                                fullName = fullName.trim(),
+                                email = email.trim(),
+                                password = password,
+                                confirmPassword = confirmPassword,
+                                contactNumber = contactNumber.trim(),
+                                address = address.trim(),
+                                accountType = selectedAccountType
+                            )
                         )
-                    )
+                    }
                 },
+                enabled = agreedToTerms,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AccentBlue,
+                    disabledContainerColor = Color(0xFFB8C0E8), // faded blue when disabled
+                    disabledContentColor = Color.White
+                )
             ) {
                 Text("Register", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }

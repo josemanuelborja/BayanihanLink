@@ -56,19 +56,10 @@ data class UserProfile(
     val completedRequests: Int
 )
 
-private val sampleUser = UserProfile(
-    fullName = "Maria Santos",
-    email = "maria.santos@email.com",
-    contactNumber = "+63 912 345 6789",
-    address = "Brgy. 14, Cagayan de Oro City",
-    accountType = "Affected Individual",
-    totalRequests = 2,
-    verifiedRequests = 1,
-    completedRequests = 0
-)
 
 @Composable
 fun ProfileScreen(
+    user: UserProfile, // required: whoever opens this screen must give the real user
     onEditProfile: () -> Unit = {},
     onChangePassword: () -> Unit = {},
     onNotificationPreferences: () -> Unit = {},
@@ -96,15 +87,15 @@ fun ProfileScreen(
                 .background(Color.White)
                 .verticalScroll(rememberScrollState())
         ) {
-            ProfileHeader(user = sampleUser, onEditProfile = onEditProfile)
+            ProfileHeader(user = user, onEditProfile = onEditProfile)
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            AccountInfoCard(user = sampleUser)
+            AccountInfoCard(user = user)
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            StatsRow(user = sampleUser)
+            StatsRow(user = user)
 
             Spacer(modifier = Modifier.height(16.dp))
 
