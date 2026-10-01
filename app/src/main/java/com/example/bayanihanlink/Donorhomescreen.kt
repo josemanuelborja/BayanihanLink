@@ -1,6 +1,7 @@
 package com.example.bayanihanlink
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -248,7 +249,6 @@ private fun DonorHeader(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-
                 text = "${sampleNeeds.size} verified requests",
                 color = Color.White.copy(alpha = 0.85f),
                 fontSize = 13.sp,
@@ -256,8 +256,6 @@ private fun DonorHeader(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         }
-
-        // Search bar, overlapping the bottom curve of the header
         OutlinedTextField(
             value = searchText,
             onValueChange = onSearchTextChange,
@@ -327,6 +325,9 @@ private fun CommunityNeedCard(need: CommunityNeed, onViewRequest: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            // A border is needed here — without it, a white card on a white
+            // page background is invisible (no edges to see where it starts/ends).
+            .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
             .background(Color.White, RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
