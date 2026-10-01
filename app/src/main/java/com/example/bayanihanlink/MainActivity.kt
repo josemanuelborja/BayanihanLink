@@ -48,7 +48,9 @@ private enum class AppScreen {
     Profile,
     RequestAssistance,
     RequestDetails,
-    DonorHome
+    DonorHome,
+    NeedDetails,
+    OfferAssistance
 }
 
 @Composable
@@ -259,7 +261,7 @@ fun BayanihanLinkApp() {
                 userName = loggedInUser?.fullName ?: "Guest",
                 onViewRequest = { needId ->
                     selectedRequestId = needId
-                    currentScreen = AppScreen.RequestDetails
+                    currentScreen = AppScreen.NeedDetails
                 },
                 onNavigateMyOffers = {
 
@@ -269,6 +271,27 @@ fun BayanihanLinkApp() {
                 },
                 onNavigateProfile = {
                     currentScreen = AppScreen.Profile
+                }
+            )
+            AppScreen.NeedDetails -> NeedDetailsScreen(
+                needId = selectedRequestId,
+                onBack = {
+                    currentScreen = AppScreen.DonorHome
+                },
+                onOfferAssistance = {
+                    currentScreen = AppScreen.OfferAssistance
+                }
+            )
+            AppScreen.OfferAssistance -> OfferAssistanceScreen(
+                needId = selectedRequestId,
+                onBack = {
+                    currentScreen = AppScreen.NeedDetails
+                },
+                onViewMyOffers = {
+
+                },
+                onBackToNeedsBoard = {
+                    currentScreen = AppScreen.DonorHome
                 }
             )
         }
