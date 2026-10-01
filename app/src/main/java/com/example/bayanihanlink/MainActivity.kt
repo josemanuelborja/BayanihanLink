@@ -51,7 +51,8 @@ private enum class AppScreen {
     DonorHome,
     NeedDetails,
     OfferAssistance,
-    MyOffers
+    MyOffers,
+    DonorAlerts
 }
 
 @Composable
@@ -234,7 +235,11 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.MyRequests
                 },
                 onNavigateAlerts = {
-                    currentScreen = AppScreen.Alerts
+                    currentScreen = if (loggedInUser?.accountType == "DONOR_VOLUNTEER") {
+                        AppScreen.DonorAlerts
+                    } else {
+                        AppScreen.Alerts
+                    }
                 }
             )
             AppScreen.RequestAssistance -> RequestAssistanceScreen(
@@ -268,7 +273,7 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.MyOffers
                 },
                 onNavigateAlerts = {
-                    currentScreen = AppScreen.Alerts
+                    currentScreen = AppScreen.DonorAlerts
                 },
                 onNavigateProfile = {
                     currentScreen = AppScreen.Profile
@@ -279,7 +284,7 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.DonorHome
                 },
                 onNavigateAlerts = {
-                    currentScreen = AppScreen.Alerts
+                    currentScreen = AppScreen.DonorAlerts
                 },
                 onNavigateProfile = {
                     currentScreen = AppScreen.Profile
@@ -304,6 +309,29 @@ fun BayanihanLinkApp() {
                 },
                 onBackToNeedsBoard = {
                     currentScreen = AppScreen.DonorHome
+                }
+            )
+            AppScreen.OfferAssistance -> OfferAssistanceScreen(
+                needId = selectedRequestId,
+                onBack = {
+                    currentScreen = AppScreen.NeedDetails
+                },
+                onViewMyOffers = {
+                    currentScreen = AppScreen.MyOffers
+                },
+                onBackToNeedsBoard = {
+                    currentScreen = AppScreen.DonorHome
+                }
+            )
+            AppScreen.DonorAlerts -> DonorAlertsScreen(
+                onNavigateNeeds = {
+                    currentScreen = AppScreen.DonorHome
+                },
+                onNavigateMyOffers = {
+                    currentScreen = AppScreen.MyOffers
+                },
+                onNavigateProfile = {
+                    currentScreen = AppScreen.Profile
                 }
             )
         }
