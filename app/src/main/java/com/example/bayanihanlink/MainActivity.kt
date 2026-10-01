@@ -50,7 +50,8 @@ private enum class AppScreen {
     RequestDetails,
     DonorHome,
     NeedDetails,
-    OfferAssistance
+    OfferAssistance,
+    MyOffers
 }
 
 @Composable
@@ -264,7 +265,18 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.NeedDetails
                 },
                 onNavigateMyOffers = {
-
+                    currentScreen = AppScreen.MyOffers
+                },
+                onNavigateAlerts = {
+                    currentScreen = AppScreen.Alerts
+                },
+                onNavigateProfile = {
+                    currentScreen = AppScreen.Profile
+                }
+            )
+            AppScreen.MyOffers -> MyOffersScreen(
+                onNavigateNeeds = {
+                    currentScreen = AppScreen.DonorHome
                 },
                 onNavigateAlerts = {
                     currentScreen = AppScreen.Alerts
@@ -288,7 +300,7 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.NeedDetails
                 },
                 onViewMyOffers = {
-
+                    currentScreen = AppScreen.MyOffers
                 },
                 onBackToNeedsBoard = {
                     currentScreen = AppScreen.DonorHome
