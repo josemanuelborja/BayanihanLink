@@ -1,6 +1,5 @@
 package com.example.bayanihanlink
 
-// These classes describe the exact JSON shapes our backend expects/returns.
 // Retrofit + Gson automatically convert between these Kotlin objects and JSON.
 
 // What we SEND when registering. Matches authRoutes.js's /register.
@@ -28,4 +27,22 @@ data class UserResponse(
     val contactNumber: String,
     val address: String,
     val accountType: String
+)
+data class UpdateProfileRequest(
+    val fullName: String,
+    val email: String,
+    val contactNumber: String,
+    val address: String
+)
+
+// What we SEND when submitting the Change Password screen.
+data class ChangePasswordRequest(
+    val userId: String,
+    val currentPassword: String,
+    val newPassword: String
+)
+
+// What the backend sends back after changing a password (just a message, no user data).
+data class MessageResponse(
+    val message: String
 )

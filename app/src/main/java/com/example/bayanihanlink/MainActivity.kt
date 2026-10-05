@@ -52,7 +52,13 @@ private enum class AppScreen {
     NeedDetails,
     OfferAssistance,
     MyOffers,
-    DonorAlerts
+    DonorAlerts,
+    EditProfile,
+    ChangePassword,
+    About,
+    DonorProfile,
+    DonorChangePassword,
+    DonorAbout
 }
 
 @Composable
@@ -71,6 +77,14 @@ fun BayanihanLinkApp() {
             AppScreen.DonorHome
         } else {
             AppScreen.Home
+        }
+    }
+
+    fun profileScreenForCurrentUser(): AppScreen {
+        return if (loggedInUser?.accountType == "DONOR_VOLUNTEER") {
+            AppScreen.DonorProfile
+        } else {
+            AppScreen.Profile
         }
     }
 
@@ -204,46 +218,94 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.Profile
                 }
             )
+            // Affected Individual's Profile screen.
             AppScreen.Profile -> ProfileScreen(
                 user = loggedInUser.toUserProfile(),
                 onEditProfile = {
-
+                    currentScreen = AppScreen.EditProfile
                 },
                 onChangePassword = {
-
-                },
-                onNotificationPreferences = {
-
+                    currentScreen = AppScreen.ChangePassword
                 },
                 onMyRequests = {
                     currentScreen = AppScreen.MyRequests
                 },
                 onAboutBayanihanLink = {
-
-                },
-                onContactSupport = {
-
+                    currentScreen = AppScreen.About
                 },
                 onLogOut = {
-                    // Logging out sends the user back to the Login screen.
                     currentScreen = AppScreen.Login
                 },
                 onNavigateHome = {
-                    currentScreen = homeScreenForCurrentUser()
+                    currentScreen = AppScreen.Home
                 },
                 onNavigateMyRequest = {
                     currentScreen = AppScreen.MyRequests
                 },
                 onNavigateAlerts = {
-                    currentScreen = if (loggedInUser?.accountType == "DONOR_VOLUNTEER") {
-                        AppScreen.DonorAlerts
-                    } else {
-                        AppScreen.Alerts
-                    }
+                    currentScreen = AppScreen.Alerts
+                }
+            )
+            AppScreen.DonorProfile -> DonorProfileScreen(
+                user = loggedInUser.toUserProfile(),
+                onEditProfile = {
+                    currentScreen = AppScreen.EditProfile
+                },
+                onChangePassword = {
+                    currentScreen = AppScreen.DonorChangePassword
+                },
+                onAboutBayanihanLink = {
+                    currentScreen = AppScreen.DonorAbout
+                },
+                onLogOut = {
+                    currentScreen = AppScreen.Login
+                },
+                onNavigateNeeds = {
+                    currentScreen = AppScreen.DonorHome
+                },
+                onNavigateMyOffers = {
+                    currentScreen = AppScreen.MyOffers
+                },
+                onNavigateAlerts = {
+                    currentScreen = AppScreen.DonorAlerts
+                }
+            )
+            AppScreen.EditProfile -> EditProfileScreen(
+                userId = loggedInUser?.id ?: "",
+                user = loggedInUser.toUserProfile(),
+                onBack = {
+                    currentScreen = profileScreenForCurrentUser()
+                },
+                onSaved = { updatedUser ->
+                    loggedInUser = updatedUser
+                    currentScreen = profileScreenForCurrentUser()
+                }
+            )
+            AppScreen.ChangePassword -> ChangePasswordScreen(
+                userId = loggedInUser?.id ?: "",
+                onBack = {
+                    currentScreen = AppScreen.Profile
+                }
+            )
+            AppScreen.DonorChangePassword -> DonorChangePasswordScreen(
+                userId = loggedInUser?.id ?: "",
+                onBack = {
+                    currentScreen = AppScreen.DonorProfile
+                }
+            )
+            AppScreen.About -> AboutScreen(
+                onBack = {
+                    currentScreen = AppScreen.Profile
+                }
+            )
+            AppScreen.DonorAbout -> DonorAboutScreen(
+                onBack = {
+                    currentScreen = AppScreen.DonorProfile
                 }
             )
             AppScreen.RequestAssistance -> RequestAssistanceScreen(
                 onExit = {
+                    // Back arrow at the top -> exit the whole wizard, return to Home.
                     currentScreen = homeScreenForCurrentUser()
                 },
                 onViewMyRequest = {
@@ -256,6 +318,9 @@ fun BayanihanLinkApp() {
             AppScreen.RequestDetails -> RequestDetailsScreen(
                 requestId = selectedRequestId,
                 onBack = {
+                    // Donors got here from the Community Needs board, not
+                    // "My Requests" — so send each account type back to
+                    // wherever makes sense for them.
                     currentScreen = if (loggedInUser?.accountType == "DONOR_VOLUNTEER") {
                         AppScreen.DonorHome
                     } else {
@@ -276,7 +341,7 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.DonorAlerts
                 },
                 onNavigateProfile = {
-                    currentScreen = AppScreen.Profile
+                    currentScreen = AppScreen.DonorProfile
                 }
             )
             AppScreen.MyOffers -> MyOffersScreen(
@@ -287,7 +352,18 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.DonorAlerts
                 },
                 onNavigateProfile = {
-                    currentScreen = AppScreen.Profile
+                    currentScreen = AppScreen.DonorProfile
+                }
+            )
+            AppScreen.DonorAlerts -> DonorAlertsScreen(
+                onNavigateNeeds = {
+                    currentScreen = AppScreen.DonorHome
+                },
+                onNavigateMyOffers = {
+                    currentScreen = AppScreen.MyOffers
+                },
+                onNavigateProfile = {
+                    currentScreen = AppScreen.DonorProfile
                 }
             )
             AppScreen.NeedDetails -> NeedDetailsScreen(
@@ -309,29 +385,6 @@ fun BayanihanLinkApp() {
                 },
                 onBackToNeedsBoard = {
                     currentScreen = AppScreen.DonorHome
-                }
-            )
-            AppScreen.OfferAssistance -> OfferAssistanceScreen(
-                needId = selectedRequestId,
-                onBack = {
-                    currentScreen = AppScreen.NeedDetails
-                },
-                onViewMyOffers = {
-                    currentScreen = AppScreen.MyOffers
-                },
-                onBackToNeedsBoard = {
-                    currentScreen = AppScreen.DonorHome
-                }
-            )
-            AppScreen.DonorAlerts -> DonorAlertsScreen(
-                onNavigateNeeds = {
-                    currentScreen = AppScreen.DonorHome
-                },
-                onNavigateMyOffers = {
-                    currentScreen = AppScreen.MyOffers
-                },
-                onNavigateProfile = {
-                    currentScreen = AppScreen.Profile
                 }
             )
         }

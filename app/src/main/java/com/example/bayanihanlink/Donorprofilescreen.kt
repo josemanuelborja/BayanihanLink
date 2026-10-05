@@ -21,9 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
@@ -44,44 +44,27 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-// This is the Profile screen for AFFECTED INDIVIDUAL accounts.
-// Donors/Volunteers use the separate DonorProfileScreen.kt instead
-// (same look overall, but different bottom tabs and menu items).
-
 private val AccentBlue = Color(0xFF2B49CC)
 private val LabelGray = Color(0xFF8A8FA3)
 private val BorderGray = Color(0xFFE3E5EC)
 private val DangerRed = Color(0xFFD32F2F)
 
-data class UserProfile(
-    val fullName: String,
-    val email: String,
-    val contactNumber: String,
-    val address: String,
-    val accountType: String,
-    val totalRequests: Int,
-    val verifiedRequests: Int,
-    val completedRequests: Int
-)
-
 @Composable
-fun ProfileScreen(
+fun DonorProfileScreen(
     user: UserProfile,
     onEditProfile: () -> Unit = {},
     onChangePassword: () -> Unit = {},
-    onMyRequests: () -> Unit = {},
     onAboutBayanihanLink: () -> Unit = {},
     onLogOut: () -> Unit = {},
-    onNavigateHome: () -> Unit = {},
-    onNavigateMyRequest: () -> Unit = {},
+    onNavigateNeeds: () -> Unit = {},
+    onNavigateMyOffers: () -> Unit = {},
     onNavigateAlerts: () -> Unit = {}
 ) {
     Scaffold(
         bottomBar = {
-            ProfileBottomBar(
-                onHomeClick = onNavigateHome,
-                onMyRequestClick = onNavigateMyRequest,
+            DonorProfileBottomBar(
+                onNeedsClick = onNavigateNeeds,
+                onMyOffersClick = onNavigateMyOffers,
                 onAlertsClick = onNavigateAlerts
             )
         }
@@ -93,28 +76,26 @@ fun ProfileScreen(
                 .background(Color.White)
                 .verticalScroll(rememberScrollState())
         ) {
-            ProfileHeader(user = user, onEditProfile = onEditProfile)
+            DonorProfileHeader(user = user, onEditProfile = onEditProfile)
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            AccountInfoCard(user = user)
+            DonorAccountInfoCard(user = user)
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            StatsRow(user = user)
+            DonorStatsRow(user = user)
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            MenuCard(
+            DonorMenuCard(
                 onEditProfile = onEditProfile,
                 onChangePassword = onChangePassword,
-                onMyRequests = onMyRequests,
                 onAboutBayanihanLink = onAboutBayanihanLink
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            LogOutButton(onClick = onLogOut)
+            DonorLogOutButton(onClick = onLogOut)
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -132,7 +113,7 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun ProfileHeader(user: UserProfile, onEditProfile: () -> Unit) {
+private fun DonorProfileHeader(user: UserProfile, onEditProfile: () -> Unit) {
     val initials = remember(user.fullName) {
         user.fullName.split(" ").filter { it.isNotBlank() }.take(2).joinToString("") { it.first().uppercase() }
     }
@@ -185,7 +166,7 @@ private fun ProfileHeader(user: UserProfile, onEditProfile: () -> Unit) {
 }
 
 @Composable
-private fun AccountInfoCard(user: UserProfile) {
+private fun DonorAccountInfoCard(user: UserProfile) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -195,20 +176,20 @@ private fun AccountInfoCard(user: UserProfile) {
     ) {
         Text(text = "ACCOUNT INFORMATION", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = LabelGray)
         Spacer(modifier = Modifier.height(14.dp))
-        InfoRow(label = "Full Name", value = user.fullName)
+        DonorInfoRow(label = "Full Name", value = user.fullName)
         Spacer(modifier = Modifier.height(12.dp))
-        InfoRow(label = "Email", value = user.email)
+        DonorInfoRow(label = "Email", value = user.email)
         Spacer(modifier = Modifier.height(12.dp))
-        InfoRow(label = "Contact", value = user.contactNumber)
+        DonorInfoRow(label = "Contact", value = user.contactNumber)
         Spacer(modifier = Modifier.height(12.dp))
-        InfoRow(label = "Address", value = user.address)
+        DonorInfoRow(label = "Address", value = user.address)
         Spacer(modifier = Modifier.height(12.dp))
-        InfoRow(label = "Account Type", value = user.accountType)
+        DonorInfoRow(label = "Account Type", value = user.accountType)
     }
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
+private fun DonorInfoRow(label: String, value: String) {
     Column {
         Text(text = label, fontSize = 12.sp, color = LabelGray)
         Spacer(modifier = Modifier.height(2.dp))
@@ -217,16 +198,16 @@ private fun InfoRow(label: String, value: String) {
 }
 
 @Composable
-private fun StatsRow(user: UserProfile) {
+private fun DonorStatsRow(user: UserProfile) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(horizontal = 20.dp)) {
-        StatBox(user.totalRequests.toString(), "Total Request", Color(0xFFE3E9FF), AccentBlue, Modifier.weight(1f))
-        StatBox(user.verifiedRequests.toString(), "Verified", Color(0xFFDFF3E3), Color(0xFF2E7D32), Modifier.weight(1f))
-        StatBox(user.completedRequests.toString(), "Completed", Color(0xFFDFF3E3), Color(0xFF2E7D32), Modifier.weight(1f))
+        DonorStatBox(user.totalRequests.toString(), "Total Request", Color(0xFFE3E9FF), AccentBlue, Modifier.weight(1f))
+        DonorStatBox(user.verifiedRequests.toString(), "Verified", Color(0xFFDFF3E3), Color(0xFF2E7D32), Modifier.weight(1f))
+        DonorStatBox(user.completedRequests.toString(), "Completed", Color(0xFFDFF3E3), Color(0xFF2E7D32), Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun StatBox(value: String, label: String, background: Color, valueColor: Color, modifier: Modifier = Modifier) {
+private fun DonorStatBox(value: String, label: String, background: Color, valueColor: Color, modifier: Modifier = Modifier) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.background(background, RoundedCornerShape(14.dp)).padding(vertical = 14.dp)
@@ -238,10 +219,9 @@ private fun StatBox(value: String, label: String, background: Color, valueColor:
 }
 
 @Composable
-private fun MenuCard(
+private fun DonorMenuCard(
     onEditProfile: () -> Unit,
     onChangePassword: () -> Unit,
-    onMyRequests: () -> Unit,
     onAboutBayanihanLink: () -> Unit
 ) {
     Column(
@@ -250,18 +230,16 @@ private fun MenuCard(
             .padding(horizontal = 20.dp)
             .border(width = 1.dp, color = BorderGray, shape = RoundedCornerShape(16.dp))
     ) {
-        MenuRow(icon = Icons.Default.Edit, label = "Edit Profile", onClick = onEditProfile)
-        MenuDivider()
-        MenuRow(icon = Icons.Default.Lock, label = "Change Password", onClick = onChangePassword)
-        MenuDivider()
-        MenuRow(icon = Icons.Default.Description, label = "My Requests", onClick = onMyRequests)
-        MenuDivider()
-        MenuRow(icon = Icons.Default.Info, label = "About BayanihanLink", onClick = onAboutBayanihanLink)
+        DonorMenuRow(icon = Icons.Default.Edit, label = "Edit Profile", onClick = onEditProfile)
+        DonorMenuDivider()
+        DonorMenuRow(icon = Icons.Default.Lock, label = "Change Password", onClick = onChangePassword)
+        DonorMenuDivider()
+        DonorMenuRow(icon = Icons.Default.Info, label = "About BayanihanLink", onClick = onAboutBayanihanLink)
     }
 }
 
 @Composable
-private fun MenuRow(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun DonorMenuRow(icon: ImageVector, label: String, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -281,12 +259,12 @@ private fun MenuRow(icon: ImageVector, label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun MenuDivider() {
+private fun DonorMenuDivider() {
     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderGray))
 }
 
 @Composable
-private fun LogOutButton(onClick: () -> Unit) {
+private fun DonorLogOutButton(onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -306,24 +284,24 @@ private fun LogOutButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun ProfileBottomBar(
-    onHomeClick: () -> Unit,
-    onMyRequestClick: () -> Unit,
+private fun DonorProfileBottomBar(
+    onNeedsClick: () -> Unit,
+    onMyOffersClick: () -> Unit,
     onAlertsClick: () -> Unit
 ) {
     NavigationBar(containerColor = Color.White) {
         NavigationBarItem(
             selected = false,
-            onClick = onHomeClick,
-            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-            label = { Text("Home") },
+            onClick = onNeedsClick,
+            icon = { Icon(Icons.Default.GridView, contentDescription = "Needs") },
+            label = { Text("Needs") },
             colors = NavigationBarItemDefaults.colors(selectedIconColor = AccentBlue, selectedTextColor = AccentBlue)
         )
         NavigationBarItem(
             selected = false,
-            onClick = onMyRequestClick,
-            icon = { Icon(Icons.Default.Description, contentDescription = "My Request") },
-            label = { Text("My Request") },
+            onClick = onMyOffersClick,
+            icon = { Icon(Icons.Default.FavoriteBorder, contentDescription = "My Offers") },
+            label = { Text("My Offers") },
             colors = NavigationBarItemDefaults.colors(selectedIconColor = AccentBlue, selectedTextColor = AccentBlue)
         )
         NavigationBarItem(
