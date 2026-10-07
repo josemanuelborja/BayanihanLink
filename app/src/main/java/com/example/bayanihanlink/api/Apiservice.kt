@@ -24,4 +24,16 @@ interface ApiService {
     // Matches: POST /api/auth/change-password on the backend
     @POST("api/auth/change-password")
     suspend fun changePassword(@Body request: ChangePasswordRequest): MessageResponse
+
+    // Forgot Password step 1: the backend checks the email and emails a 6-digit code.
+    @POST("api/auth/send-reset-code")
+    suspend fun sendResetCode(@Body request: SendResetCodeRequest): MessageResponse
+
+    // Forgot Password step 2: check that the code matches.
+    @POST("api/auth/verify-reset-code")
+    suspend fun verifyResetCode(@Body request: VerifyResetCodeRequest): MessageResponse
+
+    // Forgot Password step 3: save the new password.
+    @POST("api/auth/reset-password")
+    suspend fun resetPassword(@Body request: ResetPasswordRequest): MessageResponse
 }

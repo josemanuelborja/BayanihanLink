@@ -35,6 +35,24 @@ data class UpdateProfileRequest(
     val address: String
 )
 
+// What we SEND on step 1 of Forgot Password (ask for a reset code).
+data class SendResetCodeRequest(
+    val email: String
+)
+
+// What we SEND on step 2 of Forgot Password (check the code).
+data class VerifyResetCodeRequest(
+    val email: String,
+    val code: String
+)
+
+// What we SEND on step 3 of Forgot Password (save the new password).
+data class ResetPasswordRequest(
+    val email: String,
+    val code: String,
+    val newPassword: String
+)
+
 // What we SEND when submitting the Change Password screen.
 data class ChangePasswordRequest(
     val userId: String,

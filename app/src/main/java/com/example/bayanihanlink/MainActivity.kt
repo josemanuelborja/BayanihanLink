@@ -50,6 +50,9 @@ private enum class AppScreen {
     Onboarding,
     Login,
     Register,
+    ForgotPassword,
+    ForgotPasswordOtp,
+    ForgotPasswordReset,
     Home,
     MyRequests,
     Alerts,
@@ -77,6 +80,11 @@ fun BayanihanLinkApp() {
 
     // The account that's currently logged in (filled in after a successful login)
     var loggedInUser by remember { mutableStateOf<UserResponse?>(null) }
+
+    // The Forgot Password flow is three screens in a row, so we remember what
+    // the user typed earlier: the email (step 1) and the code (step 2).
+    var forgotEmail by remember { mutableStateOf("") }
+    var forgotCode by remember { mutableStateOf("") }
 
     // messages as little pop-ups (context, for Toast.makeText).
     val coroutineScope = rememberCoroutineScope()
@@ -145,10 +153,47 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.Register
                 },
                 onForgotPassword = {
-
+                    // Tapping "Forgot Password?" on the Login screen opens the
+                    // Forgot Password flow (email -> code -> new password).
+                    currentScreen = AppScreen.ForgotPassword
                 },
                 onAdminLogin = {
 
+                }
+            )
+            AppScreen.ForgotPassword -> ForgotPasswordScreen(
+                onBack = {
+                    // Back arrow -> return to Login
+                    currentScreen = AppScreen.Login
+                },
+                onContinue = { email ->
+                    // Step 1 done. Keep the email and show the code screen.
+                    forgotEmail = email
+                    currentScreen = AppScreen.ForgotPasswordOtp
+                }
+            )
+            AppScreen.ForgotPasswordOtp -> ForgotPasswordOtpScreen(
+                email = forgotEmail,
+                onBack = {
+                    // Back arrow -> go back to the email screen
+                    currentScreen = AppScreen.ForgotPassword
+                },
+                onContinue = { code ->
+                    // Step 2 done. Keep the code and show the new password screen.
+                    forgotCode = code
+                    currentScreen = AppScreen.ForgotPasswordReset
+                }
+            )
+            AppScreen.ForgotPasswordReset -> ForgotPasswordResetScreen(
+                email = forgotEmail,
+                code = forgotCode,
+                onBack = {
+                    // Back arrow -> go back to the code screen
+                    currentScreen = AppScreen.ForgotPasswordOtp
+                },
+                onFinished = {
+                    // The password is changed, so send them to log in again.
+                    currentScreen = AppScreen.Login
                 }
             )
             AppScreen.Register -> RegisterScreen(
