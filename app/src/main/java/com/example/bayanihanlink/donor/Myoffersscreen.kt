@@ -1,4 +1,4 @@
-package com.example.bayanihanlink
+package com.example.bayanihanlink.donor
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -55,6 +55,8 @@ private data class DonationOffer(
     val coordinatorNote: String? = null
 )
 
+// Sample data so this screen works right away. Replace with real offers from
+// the backend once a "donation offers" endpoint exists.
 private val sampleOffers = listOf(
     DonationOffer(
         id = "#DO-000089",
@@ -89,6 +91,9 @@ fun MyOffersScreen(
     onNavigateAlerts: () -> Unit = {},
     onNavigateProfile: () -> Unit = {}
 ) {
+    // Counts for the 3 stat boxes, worked out from the list itself instead
+    // of being typed in by hand — so they're always correct no matter how
+    // many offers are in the list.
     val totalOffers = sampleOffers.size
     val activeOffers = sampleOffers.count { it.status == OfferStatus.COORDINATING }
     val completedOffers = sampleOffers.count {
@@ -221,7 +226,6 @@ private fun OfferCard(offer: DonationOffer) {
     }
 }
 
-
 @Composable
 private fun DetailColumn(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
@@ -247,6 +251,7 @@ private fun StatusPill(status: OfferStatus) {
     }
 }
 
+// Bottom nav bar for this screen. "My Offers" is shown as selected since we're on this screen.
 @Composable
 private fun MyOffersBottomBar(
     onNeedsClick: () -> Unit,

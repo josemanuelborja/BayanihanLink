@@ -1,4 +1,4 @@
-package com.example.bayanihanlink
+package com.example.bayanihanlink.individual
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -41,12 +41,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bayanihanlink.R
 
 private val AccentBlue = Color(0xFF2B49CC)
 private val LabelGray = Color(0xFF8A8FA3)
 private val BorderGray = Color(0xFFE3E5EC)
+
+// The real status of a request. Every request card is assigned exactly ONE of these.
 enum class RequestStatus { PENDING, VERIFIED, ASSISTED, COMPLETED }
+
+// The filter tabs at the top. "ALL" is extra — it just means "don't filter, show everything".
 enum class RequestFilter { ALL, PENDING, VERIFIED, ASSISTED, COMPLETED }
+
+// All the info shown on one request card.
 data class RequestItem(
     val id: String,
     val title: String,
@@ -57,6 +64,9 @@ data class RequestItem(
     val status: RequestStatus,
     val recencyOrder: Int
 )
+
+// Sample data so you can see the screen working. Replace this later with real
+// requests coming from your database/backend.
 private val sampleRequests = listOf(
     RequestItem(
         id = "#BL-000234",
@@ -97,12 +107,15 @@ fun MyRequestsScreen(
     onNavigateAlerts: () -> Unit = {},
     onNavigateProfile: () -> Unit = {}
 ) {
-
+    // Which filter tab is currently selected. Starts on "All".
     var selectedFilter by remember { mutableStateOf(RequestFilter.ALL) }
 
+    // Step 1: keep only the requests that match the selected filter.
+    // "ALL" means don't filter anything out.
     val filteredRequests = sampleRequests.filter { request ->
         selectedFilter == RequestFilter.ALL || request.status.name == selectedFilter.name
     }
+        // Step 2: sort so the newest request (highest recencyOrder) is always first.
         .sortedByDescending { it.recencyOrder }
 
     Scaffold(
@@ -151,7 +164,7 @@ fun MyRequestsScreen(
     }
 }
 
-// The horizontally-scrollable row of filter: All | Pending | Verified | Assisted | Completed
+// The horizontally-scrollable row of filter pills: All | Pending | Verified | Assisted | Completed
 @Composable
 private fun FilterTabsRow(
     selectedFilter: RequestFilter,
@@ -326,6 +339,8 @@ private fun StatusTag(status: RequestStatus) {
         Text(text = label, color = textColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
+
+// Bottom nav bar for this screen. "My Request" is shown as selected since we're on this screen.
 @Composable
 private fun MyRequestsBottomBar(
     onHomeClick: () -> Unit,

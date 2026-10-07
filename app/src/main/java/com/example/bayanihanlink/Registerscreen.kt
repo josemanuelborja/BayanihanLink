@@ -60,6 +60,7 @@ enum class AccountType {
     AFFECTED_INDIVIDUAL,
     DONOR_VOLUNTEER
 }
+
 data class RegisterFormData(
     val fullName: String,
     val email: String,
@@ -78,6 +79,8 @@ fun RegisterScreen(
     onTermsClick: () -> Unit = {},
     onPrivacyClick: () -> Unit = {}
 ) {
+    // Each text field needs its own "remembered" state, so Compose knows
+    // to redraw the field whenever the user types something.
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -87,8 +90,10 @@ fun RegisterScreen(
     var selectedAccountType by remember { mutableStateOf<AccountType?>(null) }
     var agreedToTerms by remember { mutableStateOf(false) }
 
+    // Needed to show the little pop-up (Toast) messages for validation errors.
     val context = LocalContext.current
 
+    // A Column that scrolls, since this form is taller than most phone screens.
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -207,6 +212,8 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
+            // Checkbox + "I agree to Terms and Condition and Privacy Policy of BayanihanLink."
+            // "Terms and Condition" and "Privacy Policy" are clickable links (shown in blue).
             Row(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier.fillMaxWidth()
@@ -221,7 +228,7 @@ fun RegisterScreen(
                     withStyle(SpanStyle(color = Color(0xFF5A5F73))) {
                         append("I agree to the ")
                     }
-
+                    // "TERMS" tag marks this part as clickable and links it to onTermsClick
                     pushStringAnnotation(tag = "TERMS", annotation = "terms")
                     withStyle(SpanStyle(color = AccentBlue, fontWeight = FontWeight.SemiBold)) {
                         append("Terms and Condition")
@@ -230,7 +237,7 @@ fun RegisterScreen(
                     withStyle(SpanStyle(color = Color(0xFF5A5F73))) {
                         append(" and ")
                     }
-
+                    // "PRIVACY" tag marks this part as clickable and links it to onPrivacyClick
                     pushStringAnnotation(tag = "PRIVACY", annotation = "privacy")
                     withStyle(SpanStyle(color = AccentBlue, fontWeight = FontWeight.SemiBold)) {
                         append("Privacy Policy")
@@ -279,12 +286,14 @@ fun RegisterScreen(
                             "Please enter your address."
                         selectedAccountType == null ->
                             "Please select an account type."
-                        else -> null
+                        else -> null // null means "no problems found"
                     }
 
                     if (errorMessage != null) {
+                        // Something is wrong: show the message, don't register.
                         Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
                     } else {
+                        // Everything is valid: send it up to MainActivity to call the backend.
                         onRegister(
                             RegisterFormData(
                                 fullName = fullName.trim(),
@@ -298,6 +307,8 @@ fun RegisterScreen(
                         )
                     }
                 },
+                // The button is only clickable when the "I agree" checkbox is checked.
+                // While it's false, the button is disabled and shown in a faded color.
                 enabled = agreedToTerms,
                 modifier = Modifier
                     .fillMaxWidth()

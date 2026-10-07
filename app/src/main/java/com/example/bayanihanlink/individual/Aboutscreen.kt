@@ -1,5 +1,6 @@
-package com.example.bayanihanlink
+package com.example.bayanihanlink.individual
 
+import com.example.bayanihanlink.R
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,33 +41,23 @@ fun AboutScreen(onBack: () -> Unit = {}) {
             .background(AccentBlue)
             .verticalScroll(rememberScrollState())
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(260.dp)
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.bayanihanlink_about),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 48.dp, bottom = 32.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color.White),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_logo),
-                        contentDescription = "BayanihanLink logo",
-                        modifier = Modifier.size(48.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("BayanihanLink", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text(
-                    "Connecting Needs with Helping Hands",
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = 13.sp
-                )
             }
 
             IconButton(onClick = onBack, modifier = Modifier.padding(top = 4.dp, start = 4.dp)) {

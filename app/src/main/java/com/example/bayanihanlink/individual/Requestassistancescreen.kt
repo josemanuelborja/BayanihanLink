@@ -1,4 +1,4 @@
-package com.example.bayanihanlink
+package com.example.bayanihanlink.individual
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -86,6 +86,8 @@ enum class AssistanceCategory(val label: String, val icon: ImageVector) {
     BLANKETS("Blankets", Icons.Filled.Bed),
     OTHER_NEED("Other", Icons.Filled.Category)
 }
+
+// The 4 steps of the wizard, plus a 5th "SUCCESS" screen shown after submitting.
 private enum class WizardStep(val stepNumber: Int, val label: String) {
     DISASTER(1, "Disaster"),
     NEEDS(2, "Needs"),
@@ -132,6 +134,8 @@ fun RequestAssistanceScreen(
             .fillMaxSize()
             .background(Color.White)
     ) {
+        // Top bar: back arrow + title. Always exits the whole screen (goes back to Home),
+        // separate from the "Back" button at the bottom which just goes one step back.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp)
@@ -216,7 +220,7 @@ fun RequestAssistanceScreen(
             Button(
                 onClick = {
                     if (currentStep == WizardStep.REVIEW) {
-                        // TODO: actually send the request to your backend/database here later.
+
                         currentStep = WizardStep.SUCCESS
                     } else {
                         currentStep = WizardStep.entries[currentStep.ordinal + 1]
@@ -271,6 +275,9 @@ private fun NeedsStep(selected: AssistanceCategory?, onSelect: (AssistanceCatego
         icon = { it.icon }
     )
 }
+
+// A reusable 2-column grid of selectable icon cards. Works for both
+// DisasterType and AssistanceCategory since both have a label + icon.
 @Composable
 private fun <T> OptionGrid(
     options: List<T>,
@@ -294,6 +301,8 @@ private fun <T> OptionGrid(
                     modifier = Modifier.weight(1f)
                 )
             }
+            // If a row only has 1 item (odd number of options), add empty space
+            // so it doesn't stretch to fill the whole row.
             if (rowItems.size == 1) {
                 Spacer(modifier = Modifier.weight(1f))
             }
@@ -478,6 +487,8 @@ private fun ReviewStep(
     unit: String,
     affectedPersons: String
 ) {
+    // In a real app, address and contact would come from the logged-in
+    // user's profile. Hardcoded here to match the sample profile we made earlier.
     val address = "Brgy. 14, Cagayan de Oro City"
     val contact = "+63 912 345 6789"
 
@@ -664,7 +675,6 @@ private fun RequestSubmittedScreen(
         ) {
             Text("Request ID", fontSize = 12.sp, color = LabelGray)
             Spacer(modifier = Modifier.height(4.dp))
-            // TODO: replace with the real generated request ID once you have a backend.
             Text("#BL-000301", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AccentBlue)
         }
 

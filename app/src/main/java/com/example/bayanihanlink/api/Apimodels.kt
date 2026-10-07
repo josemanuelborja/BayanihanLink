@@ -1,6 +1,4 @@
-package com.example.bayanihanlink
-
-// Retrofit + Gson automatically convert between these Kotlin objects and JSON.
+package com.example.bayanihanlink.api
 
 // What we SEND when registering. Matches authRoutes.js's /register.
 data class RegisterRequest(
@@ -28,6 +26,8 @@ data class UserResponse(
     val address: String,
     val accountType: String
 )
+
+// What we SEND when saving changes on the Edit Profile screen.
 data class UpdateProfileRequest(
     val fullName: String,
     val email: String,

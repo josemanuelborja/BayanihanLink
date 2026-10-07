@@ -1,4 +1,4 @@
-package com.example.bayanihanlink
+package com.example.bayanihanlink.donor
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -58,6 +58,9 @@ data class NeedDetail(
     val quantityTarget: Int
 )
 
+// Sample data so this screen works right away, matching the card shown on
+// the Donor Home screen. In a real app, you'd fetch the real need using
+// "needId" from the backend instead of always returning this same sample.
 private fun sampleNeedDetail(needId: String): NeedDetail = NeedDetail(
     id = needId,
     title = "Typhoon Assistance",
@@ -204,6 +207,8 @@ fun NeedDetailsScreen(
                 }
                 Spacer(modifier = Modifier.height(10.dp))
 
+                // Simple progress bar: a gray background box, with a green
+                // box on top sized to the percentage completed.
                 val progress = detail.quantityOffered.toFloat() / detail.quantityTarget.toFloat()
                 Box(
                     modifier = Modifier

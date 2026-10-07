@@ -1,4 +1,4 @@
-package com.example.bayanihanlink
+package com.example.bayanihanlink.api
 
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -16,6 +16,8 @@ interface ApiService {
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): UserResponse
 
+    // Matches: PUT /api/users/:id on the backend. "{id}" in the URL gets
+    // replaced with whatever string is passed into the "id" parameter.
     @PUT("api/users/{id}")
     suspend fun updateProfile(@Path("id") id: String, @Body request: UpdateProfileRequest): UserResponse
 

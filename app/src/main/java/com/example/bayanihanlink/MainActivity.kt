@@ -1,5 +1,9 @@
 package com.example.bayanihanlink
 
+import com.example.bayanihanlink.api.*
+import com.example.bayanihanlink.individual.*
+import com.example.bayanihanlink.donor.*
+
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -8,7 +12,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -29,14 +32,19 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             BayanihanLinkTheme {
-                Surface(modifier = Modifier.fillMaxSize() .statusBarsPadding()) {
-
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                ) {
                     BayanihanLinkApp()
                 }
             }
         }
     }
 }
+
+// Added "Register" to the list of screens the app can show.
 private enum class AppScreen {
     Splash,
     Onboarding,
@@ -67,11 +75,16 @@ fun BayanihanLinkApp() {
 
     var selectedRequestId by remember { mutableStateOf("#BL-000234") }
 
+    // The account that's currently logged in (filled in after a successful login)
     var loggedInUser by remember { mutableStateOf<UserResponse?>(null) }
 
+    // messages as little pop-ups (context, for Toast.makeText).
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    // Whenever some screen wants to go "back to Home", this decides WHICH
+    // home screen that means — Affected Individuals and Donors/Volunteers
+    // each have their own.
     fun homeScreenForCurrentUser(): AppScreen {
         return if (loggedInUser?.accountType == "DONOR_VOLUNTEER") {
             AppScreen.DonorHome
@@ -80,6 +93,8 @@ fun BayanihanLinkApp() {
         }
     }
 
+    // Same idea, but for "go back to Profile" — Donors and Affected
+    // Individuals each have their own separate Profile screen.
     fun profileScreenForCurrentUser(): AppScreen {
         return if (loggedInUser?.accountType == "DONOR_VOLUNTEER") {
             AppScreen.DonorProfile
@@ -113,6 +128,8 @@ fun BayanihanLinkApp() {
                         try {
                             val user = RetrofitClient.api.login(LoginRequest(email, password))
                             loggedInUser = user
+                            // Send the person to a DIFFERENT homepage depending on
+                            // which account type they registered as.
                             currentScreen = if (user.accountType == "DONOR_VOLUNTEER") {
                                 AppScreen.DonorHome
                             } else {
@@ -124,6 +141,7 @@ fun BayanihanLinkApp() {
                     }
                 },
                 onCreateAccount = {
+                    // Tapping "Create an Account" now opens the Register screen.
                     currentScreen = AppScreen.Register
                 },
                 onForgotPassword = {
@@ -135,7 +153,7 @@ fun BayanihanLinkApp() {
             )
             AppScreen.Register -> RegisterScreen(
                 onBack = {
-
+                    // Back arrow -> return to Login
                     currentScreen = AppScreen.Login
                 },
                 onRegister = { formData ->
@@ -151,6 +169,8 @@ fun BayanihanLinkApp() {
                                         password = formData.password,
                                         contactNumber = formData.contactNumber,
                                         address = formData.address,
+                                        // formData.accountType.name turns the enum into the exact
+                                        // text the backend expects, e.g. "AFFECTED_INDIVIDUAL".
                                         accountType = formData.accountType.name
                                     )
                                 )
@@ -163,7 +183,7 @@ fun BayanihanLinkApp() {
                     }
                 },
                 onLogIn = {
-
+                    // "Already have an account? Log in" -> return to Login
                     currentScreen = AppScreen.Login
                 },
                 onTermsClick = {
@@ -174,6 +194,8 @@ fun BayanihanLinkApp() {
                 }
             )
             AppScreen.Home -> HomeScreen(
+                // Uses the real logged-in user's name now. Falls back to
+                // "Maria Santos" only if somehow nobody is logged in yet.
                 userName = loggedInUser?.fullName ?: "Maria Santos",
                 onRequestAssistance = {
                     currentScreen = AppScreen.RequestAssistance
@@ -246,6 +268,8 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.Alerts
                 }
             )
+            // Donor/Volunteer's Profile screen — a separate screen entirely,
+            // not just a different mode of the one above.
             AppScreen.DonorProfile -> DonorProfileScreen(
                 user = loggedInUser.toUserProfile(),
                 onEditProfile = {
@@ -305,7 +329,6 @@ fun BayanihanLinkApp() {
             )
             AppScreen.RequestAssistance -> RequestAssistanceScreen(
                 onExit = {
-                    // Back arrow at the top -> exit the whole wizard, return to Home.
                     currentScreen = homeScreenForCurrentUser()
                 },
                 onViewMyRequest = {
@@ -318,9 +341,6 @@ fun BayanihanLinkApp() {
             AppScreen.RequestDetails -> RequestDetailsScreen(
                 requestId = selectedRequestId,
                 onBack = {
-                    // Donors got here from the Community Needs board, not
-                    // "My Requests" — so send each account type back to
-                    // wherever makes sense for them.
                     currentScreen = if (loggedInUser?.accountType == "DONOR_VOLUNTEER") {
                         AppScreen.DonorHome
                     } else {
@@ -390,7 +410,6 @@ fun BayanihanLinkApp() {
         }
     }
 }
-
 private fun UserResponse?.toUserProfile(): UserProfile {
     if (this == null) {
         return UserProfile(
@@ -410,11 +429,14 @@ private fun UserResponse?.toUserProfile(): UserProfile {
         email = email,
         contactNumber = contactNumber,
         address = address,
+        // The backend stores "AFFECTED_INDIVIDUAL" — turn it into readable text.
         accountType = when (accountType) {
             "AFFECTED_INDIVIDUAL" -> "Affected Individual"
             "DONOR_VOLUNTEER" -> "Donor / Volunteer"
             else -> accountType
         },
+        // These 3 are 0 for now, since we haven't connected the requests list
+        // to the backend yet. That's the NEXT step (My Requests + Home stats).
         totalRequests = 0,
         verifiedRequests = 0,
         completedRequests = 0

@@ -1,4 +1,4 @@
-package com.example.bayanihanlink
+package com.example.bayanihanlink.donor
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -58,6 +58,8 @@ private val BorderGray = Color(0xFFE3E5EC)
 // The 4 filter chips at the top: All | Critical | Urgent | Normal
 private enum class NeedFilter { ALL, CRITICAL, URGENT, NORMAL }
 
+// One community need card. Hardcoded for now — will come from the backend
+// once the "browse community needs" endpoint exists.
 private data class CommunityNeed(
     val id: String,
     val urgency: String, // "CRITICAL", "URGENT", "NORMAL"
@@ -133,6 +135,8 @@ fun DonorHomeScreen(
     var selectedFilter by remember { mutableStateOf(NeedFilter.ALL) }
     var searchText by remember { mutableStateOf("") }
 
+    // Step 1: keep only needs matching the selected urgency filter.
+    // Step 2: also keep only needs whose title/location contains the search text.
     val filteredNeeds = sampleNeeds
         .filter { need -> selectedFilter == NeedFilter.ALL || need.urgency == selectedFilter.name }
         .filter { need ->
@@ -256,6 +260,9 @@ private fun DonorHeader(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         }
+
+        // Search bar, overlapping the bottom curve of the header (same trick
+        // used on the other Home screen: shift up by a fixed amount).
         OutlinedTextField(
             value = searchText,
             onValueChange = onSearchTextChange,

@@ -1,4 +1,4 @@
-package com.example.bayanihanlink
+package com.example.bayanihanlink.donor
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -77,6 +77,7 @@ fun OfferAssistanceScreen(
 
     // Once the offer is submitted, we show the success screen instead of the form.
     var isSubmitted by remember { mutableStateOf(false) }
+
     val fakeOfferId = "#DO-000089"
 
     if (isSubmitted) {
@@ -230,7 +231,9 @@ fun OfferAssistanceScreen(
 
             Button(
                 onClick = {
-                    // VALIDATION: same step-by-step pattern as the Register screen
+                    // VALIDATION: same step-by-step pattern as the Register screen —
+                    // check each field, show the FIRST problem found, and only
+                    // continue once everything passes.
                     val errorMessage: String? = when {
                         itemProvided.trim().isEmpty() ->
                             "Please enter the item you can provide."
@@ -248,6 +251,9 @@ fun OfferAssistanceScreen(
                     if (errorMessage != null) {
                         Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
                     } else {
+                        // TODO: send this offer to the backend once the
+                        // "donation offers" endpoint exists. For now we just
+                        // move on to the success screen.
                         isSubmitted = true
                     }
                 },

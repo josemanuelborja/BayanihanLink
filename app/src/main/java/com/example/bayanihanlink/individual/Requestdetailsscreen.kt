@@ -1,4 +1,4 @@
-package com.example.bayanihanlink
+package com.example.bayanihanlink.individual
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -66,10 +66,6 @@ data class RequestDetail(
     // Steps before this are shown as done (green check); steps after are upcoming (gray).
     val currentTimelineStep: Int
 )
-
-// Sample data so this screen works right away. In a real app, you'd look up
-// the real request using the "requestId" passed into this screen (for example,
-// from your database) instead of always returning this same sample.
 private fun sampleRequestDetail(requestId: String): RequestDetail = RequestDetail(
     id = requestId,
     urgency = "URGENT",

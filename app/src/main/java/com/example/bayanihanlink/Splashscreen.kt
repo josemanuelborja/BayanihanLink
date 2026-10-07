@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
+// Splash background blue — adjust to taste / to match your exact brand color
 private val SplashBlue = Color(0xFF2B49CC)
 
 @Composable
@@ -127,7 +128,7 @@ fun SplashScreen(
                     .background(Color.White),
                 contentAlignment = Alignment.Center
             ) {
-
+                // Replace R.drawable.ic_logo with your actual logo drawable name
                 Image(
                     painter = painterResource(id = R.drawable.ic_logo),
                     contentDescription = "BayanihanLink logo",

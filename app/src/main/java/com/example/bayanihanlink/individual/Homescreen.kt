@@ -1,4 +1,4 @@
-package com.example.bayanihanlink
+package com.example.bayanihanlink.individual
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -86,6 +86,8 @@ fun HomeScreen(
     onNavigateAlerts: () -> Unit = {},
     onNavigateProfile: () -> Unit = {}
 ) {
+    // Scaffold = a ready-made screen "frame" that reserves space for a bottom bar
+    // (and can also hold a top bar, floating button, etc. if you need them later).
     Scaffold(
         bottomBar = {
             HomeBottomBar(
@@ -98,11 +100,13 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(innerPadding) // leaves room so content isn't hidden behind the bottom bar
+                // White here (not blue)
                 .background(Color.White)
                 .verticalScroll(rememberScrollState())
         ) {
             HomeHeader(userName = userName)
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -141,11 +145,14 @@ private fun HomeHeader(userName: String) {
             .joinToString("") { it.first().uppercase() }
     }
 
+    // Everything here (greeting + banner) stays INSIDE this one blue block now
+    // (matches the reference image), instead of the banner poking outside it.
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                color = AccentBlue
+                color = AccentBlue,
+                shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
             )
             .padding(horizontal = 20.dp)
             .padding(top = 20.dp, bottom = 44.dp) // extra bottom room for the white sheet to overlap into
@@ -182,6 +189,8 @@ private fun HomeHeader(userName: String) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Alert banner: a see-through light card (NOT solid orange) sitting
+        // inside the blue block, with a small solid-orange square just for the icon.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -281,6 +290,7 @@ private fun ActiveRequestSection(onViewDetails: () -> Unit) {
 
             Spacer(modifier = Modifier.height(18.dp))
 
+            // currentStep = 3 means "Offered" is the active step (matches the screenshot)
             StepTracker(currentStep = 3)
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -473,6 +483,8 @@ private fun RecentUpdatesSection() {
         }
     }
 }
+
+// ---------- Bottom navigation bar ----------
 @Composable
 private fun HomeBottomBar(
     onMyRequestClick: () -> Unit,

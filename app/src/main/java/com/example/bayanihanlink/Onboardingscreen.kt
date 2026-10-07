@@ -25,6 +25,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -40,8 +41,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.getValue
 
 private val AccentBlue = Color(0xFF2B3FC7)
 private val IconCircleBg = Color(0xFFD9DEF7)
@@ -89,7 +90,6 @@ fun OnboardingScreen(
                 )
             )
     ) {
-
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -153,6 +153,8 @@ fun OnboardingScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // "Already have an account? Log in" — whole line is tappable and
+            // goes straight to the Login screen.
             val loginText = buildAnnotatedString {
                 withStyle(SpanStyle(color = SubtitleGray)) {
                     append("Already have an account? ")
@@ -167,7 +169,9 @@ fun OnboardingScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp)
+                    // extra vertical padding = bigger, easier-to-hit tap area
+                    .padding(vertical = 8.dp)
+                    .padding(bottom = 16.dp)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -175,6 +179,25 @@ fun OnboardingScreen(
                     )
             )
         }
+
+        // "Skip" button — placed last so it always sits on top and always
+        // receives the tap, even though the Pager is right behind/under it.
+        Text(
+            text = "Skip",
+            color = Color(0xFFAEB2C0),
+            fontSize = 15.sp,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .zIndex(1f)
+                // bigger padding = bigger tap target, easier to press
+                .padding(top = 12.dp, end = 12.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDone
+                )
+                .padding(top = 8.dp, bottom = 8.dp, start = 12.dp, end = 12.dp)
+        )
     }
 }
 
