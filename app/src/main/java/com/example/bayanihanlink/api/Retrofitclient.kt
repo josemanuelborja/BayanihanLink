@@ -6,10 +6,17 @@ import retrofit2.converter.gson.GsonConverterFactory
 import org.json.JSONObject
 
 object RetrofitClient {
-    // 10.0.2.2 is a special address that means "the computer running the emulator".
-    // The emulator has its OWN "localhost" that is NOT the same as your PC's
-    // localhost, so we can't just use http://localhost:3000/ here.
-    private const val BASE_URL = "http://10.0.2.2:3000/"
+    // This is the IP address of the computer running the backend.
+    //
+    // A real phone cannot use "localhost" (that would mean the phone itself),
+    // and it cannot use "10.0.2.2" either — that only works on the Android
+    // emulator. So we use the computer's Wi-Fi IP address instead.
+    //
+    // If the app suddenly says "Could not reach the server", the Wi-Fi IP has
+    // probably changed. Find the new one by running this in PowerShell:
+    //     ipconfig
+    // and replace the number below with the "IPv4 Address".
+    private const val BASE_URL = "http://192.168.110.254:3000/"
 
     val api: ApiService by lazy {
         Retrofit.Builder()
