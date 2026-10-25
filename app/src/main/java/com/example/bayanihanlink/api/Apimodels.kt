@@ -17,14 +17,16 @@ data class LoginRequest(
 )
 
 // What the backend SENDS BACK after register or login succeeds.
-// Notice: no password field here — the backend never sends that back.
 data class UserResponse(
     val id: String,
     val fullName: String,
     val email: String,
     val contactNumber: String,
     val address: String,
-    val accountType: String
+    val accountType: String,
+    val isVerified: Boolean? = null,
+    val role: String? = null,
+    val authToken: String? = null
 )
 
 // What we SEND when saving changes on the Edit Profile screen.
@@ -63,4 +65,68 @@ data class ChangePasswordRequest(
 // What the backend sends back after changing a password (just a message, no user data).
 data class MessageResponse(
     val message: String
+)
+
+// Request models
+data class RequestResponse(
+    val id: String,
+    val userId: String? = null,
+    val disasterType: String? = null,
+    val category: String? = null,
+    val categories: List<String>? = null,
+    val itemNeeded: String? = null,
+    val quantity: String? = null,
+    val unit: String? = null,
+    val description: String? = null,
+    val personsAffected: Int? = null,
+    val location: String? = null,
+    val evidenceImage: String? = null,
+    val urgency: String? = null,
+    val status: String? = null,
+    val currentTimelineStep: Int? = null,
+    val dateSubmitted: String? = null
+)
+
+data class UpdateRequestStatusBody(
+    val status: String? = null,
+    val urgency: String? = null,
+    val currentTimelineStep: Int? = null
+)
+
+// Offer models
+data class OfferRequest(
+    val donorId: String,
+    val requestId: String,
+    val quantityOffered: String,
+    val unit: String? = null,
+    val message: String? = null
+)
+
+data class OfferResponse(
+    val _id: String? = null,
+    val id: String? = null,
+    val donorId: String? = null,
+    val requestId: String? = null,
+    val quantityOffered: String? = null,
+    val unit: String? = null,
+    val message: String? = null,
+    val status: String? = null,
+    val createdAt: String? = null,
+    val updatedAt: String? = null
+)
+
+// Notification models
+data class NotificationResponse(
+    val _id: String? = null,
+    val id: String? = null,
+    val userId: String? = null,
+    val type: String? = null,
+    val title: String? = null,
+    val message: String? = null,
+    val requestId: String? = null,
+    val offerId: String? = null,
+    val contentType: String? = null,
+    val targetId: String? = null,
+    val isRead: Boolean? = null,
+    val createdAt: String? = null
 )

@@ -4,18 +4,23 @@ import com.example.bayanihanlink.api.*
 import com.example.bayanihanlink.individual.*
 import com.example.bayanihanlink.donor.*
 
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,6 +29,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.example.bayanihanlink.ui.theme.BayanihanLinkTheme
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,14 +92,17 @@ fun BayanihanLinkApp() {
     // The account that's currently logged in (filled in after a successful login)
     var loggedInUser by remember { mutableStateOf<UserResponse?>(null) }
 
-    // The Forgot Password flow is three screens in a row, so we remember what
-    // the user typed earlier: the email (step 1) and the code (step 2).
+    // The Forgot Password flow is three screens in a row
     var forgotEmail by remember { mutableStateOf("") }
     var forgotCode by remember { mutableStateOf("") }
 
-    // messages as little pop-ups (context, for Toast.makeText).
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    val userRequests = remember { mutableStateListOf<RequestResponse>() }
+    val allNeeds = remember { mutableStateListOf<RequestResponse>() }
+    val userOffers = remember { mutableStateListOf<OfferResponse>() }
+    val notifications = remember { mutableStateListOf<NotificationResponse>() }
 
     // Whenever some screen wants to go "back to Home", this decides WHICH
     // home screen that means — Affected Individuals and Donors/Volunteers
@@ -136,12 +150,29 @@ fun BayanihanLinkApp() {
                         try {
                             val user = RetrofitClient.api.login(LoginRequest(email, password))
                             loggedInUser = user
-                            // Send the person to a DIFFERENT homepage depending on
-                            // which account type they registered as.
                             currentScreen = if (user.accountType == "DONOR_VOLUNTEER") {
                                 AppScreen.DonorHome
                             } else {
                                 AppScreen.Home
+                            }
+                            // Load data
+                            try {
+                                if (user.accountType == "DONOR_VOLUNTEER") {
+                                    val needs = RetrofitClient.api.getAllRequests()
+                                    allNeeds.clear()
+                                    allNeeds.addAll(needs)
+                                    val offers = RetrofitClient.api.getOffersByUser(user.id, user.id, if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}", user.authToken)
+                                    userOffers.clear()
+                                    userOffers.addAll(offers)
+                                } else {
+                                    val reqs = RetrofitClient.api.getUserRequests(user.id, user.id, if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}", user.authToken)
+                                    userRequests.clear()
+                                    userRequests.addAll(reqs)
+                                }
+                                val notifs = RetrofitClient.api.getNotifications(user.id, user.id, if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}", user.authToken)
+                                notifications.clear()
+                                notifications.addAll(notifs)
+                            } catch (_: Exception) {
                             }
                         } catch (error: Exception) {
                             Toast.makeText(context, readableErrorMessage(error), Toast.LENGTH_LONG).show()
@@ -238,27 +269,57 @@ fun BayanihanLinkApp() {
 
                 }
             )
-            AppScreen.Home -> HomeScreen(
-                userName = loggedInUser?.fullName ?: "Citizen",
-                activeRequestId = null,
-                onRequestAssistance = {
-                    currentScreen = AppScreen.RequestAssistance
-                },
-                onViewRequestDetails = {
-                    currentScreen = AppScreen.MyRequests
-                },
-                onNavigateMyRequest = {
-                    currentScreen = AppScreen.MyRequests
-                },
-                onNavigateAlerts = {
-                    currentScreen = AppScreen.Alerts
-                },
-                onNavigateProfile = {
-                    currentScreen = AppScreen.Profile
-                }
-            )
+            AppScreen.Home -> {
+                val active = userRequests.firstOrNull()
+                val mapStatus = { s: String? -> when (s) { "PENDING" -> 1; "VERIFIED" -> 2; "ASSISTED" -> 3; "COMPLETED" -> 4; else -> 1 } }
+                HomeScreen(
+                    userName = loggedInUser?.fullName ?: "Citizen",
+                    activeRequestId = active?.id,
+                    activeRequestTitle = active?.disasterType ?: "",
+                    activeRequestItems = active?.itemNeeded ?: "",
+                    activeRequestUrgency = active?.urgency ?: "",
+                    activeRequestStatusLabel = active?.status ?: "",
+                    activeRequestStep = mapStatus(active?.status),
+                    totalRequests = userRequests.size,
+                    verifiedRequests = userRequests.count { it.status == "VERIFIED" },
+                    completedRequests = userRequests.count { it.status == "COMPLETED" },
+                    recentUpdates = emptyList(),
+                    onRequestAssistance = {
+                        currentScreen = AppScreen.RequestAssistance
+                    },
+                    onViewRequestDetails = {
+                        if (active != null) selectedRequestId = active.id
+                        currentScreen = AppScreen.RequestDetails
+                    },
+                    onNavigateMyRequest = {
+                        currentScreen = AppScreen.MyRequests
+                    },
+                    onNavigateAlerts = {
+                        currentScreen = AppScreen.Alerts
+                    },
+                    onNavigateProfile = {
+                        currentScreen = AppScreen.Profile
+                    }
+                )
+            }
             AppScreen.MyRequests -> MyRequestsScreen(
-                requests = emptyList(),
+                requests = userRequests.map { r ->
+                    com.example.bayanihanlink.individual.RequestItem(
+                        id = r.id,
+                        title = r.disasterType ?: (r.categories?.firstOrNull() ?: ""),
+                        items = r.itemNeeded ?: "",
+                        quantity = "${r.quantity ?: ""} ${r.unit ?: ""}".trim(),
+                        date = r.dateSubmitted?.take(10) ?: "",
+                        urgency = r.urgency ?: "NORMAL",
+                        status = when (r.status) {
+                            "VERIFIED" -> com.example.bayanihanlink.individual.RequestStatus.VERIFIED
+                            "ASSISTED" -> com.example.bayanihanlink.individual.RequestStatus.ASSISTED
+                            "COMPLETED" -> com.example.bayanihanlink.individual.RequestStatus.COMPLETED
+                            else -> com.example.bayanihanlink.individual.RequestStatus.PENDING
+                        },
+                        recencyOrder = 1
+                    )
+                },
                 onViewDetails = { request ->
                     selectedRequestId = request.id
                     currentScreen = AppScreen.RequestDetails
@@ -274,11 +335,44 @@ fun BayanihanLinkApp() {
                 }
             )
             AppScreen.Alerts -> AlertsScreen(
-                notificationsList = emptyList(),
+                notificationsList = notifications.map { n ->
+                    val icon = when (n.type) {
+                        "REQUEST_VERIFIED", "REQUEST_STATUS_UPDATE", "REQUEST_COMPLETED" -> androidx.compose.material.icons.Icons.Filled.CheckCircle
+                        "OFFER_RECEIVED", "OFFER_ACCEPTED" -> androidx.compose.material.icons.Icons.Filled.Favorite
+                        else -> androidx.compose.material.icons.Icons.Filled.Notifications
+                    }
+                    val bg = when (n.type) {
+                        "REQUEST_VERIFIED" -> androidx.compose.ui.graphics.Color(0xFF3BB273)
+                        "OFFER_ACCEPTED" -> androidx.compose.ui.graphics.Color(0xFFF5A623)
+                        "REQUEST_COMPLETED" -> androidx.compose.ui.graphics.Color(0xFF3BB273)
+                        else -> androidx.compose.ui.graphics.Color(0xFF9C4DCC)
+                    }
+                    com.example.bayanihanlink.individual.NotificationItem(
+                        icon = icon,
+                        iconBackground = bg,
+                        title = n.title ?: "",
+                        message = n.message ?: "",
+                        timeAgo = n.createdAt?.take(10) ?: "",
+                        isUnread = !(n.isRead ?: false),
+                        requestId = n.requestId ?: n.targetId,
+                        type = n.type
+                    )
+                },
                 onNotificationClick = { notification ->
                     if (notification.requestId != null) {
                         selectedRequestId = notification.requestId
                         currentScreen = AppScreen.RequestDetails
+                    }
+                    val n = notifications.find { (it._id == notification.requestId || it.requestId == notification.requestId) && it.isRead != true }
+                    if (n != null && loggedInUser != null) {
+                        coroutineScope.launch {
+                            try {
+                                val id = n._id ?: n.id ?: ""
+                                if (id.isNotEmpty()) {
+                                    RetrofitClient.api.markNotificationRead(id, loggedInUser!!.id, if (loggedInUser!!.authToken.isNullOrBlank()) null else "Bearer ${loggedInUser!!.authToken}", loggedInUser!!.authToken)
+                                }
+                            } catch (_: Exception) {}
+                        }
                     }
                 },
                 onNavigateHome = {
@@ -378,22 +472,98 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.DonorProfile
                 }
             )
-            AppScreen.RequestAssistance -> RequestAssistanceScreen(
-                userAddress = loggedInUser?.address ?: "",
-                userContact = loggedInUser?.contactNumber ?: "",
-                onExit = {
-                    currentScreen = homeScreenForCurrentUser()
-                },
-                onViewMyRequest = {
-                    currentScreen = AppScreen.MyRequests
-                },
-                onBackToHome = {
-                    currentScreen = homeScreenForCurrentUser()
-                },
-                onSubmitRequest = { _ ->
-                    // TODO: Submit to backend when endpoints are available
+            AppScreen.RequestAssistance -> {
+                var evidenceUri by remember { mutableStateOf<Uri?>(null) }
+                val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+                    evidenceUri = uri
                 }
-            )
+                RequestAssistanceScreen(
+                    userAddress = loggedInUser?.address ?: "",
+                    userContact = loggedInUser?.contactNumber ?: "",
+                    onExit = {
+                        currentScreen = homeScreenForCurrentUser()
+                    },
+                    onViewMyRequest = {
+                        currentScreen = AppScreen.MyRequests
+                    },
+                    onBackToHome = {
+                        currentScreen = homeScreenForCurrentUser()
+                    },
+                    onSubmitRequest = { payload ->
+                        val user = loggedInUser
+                        if (user == null) {
+                            Toast.makeText(context, "Please log in again.", Toast.LENGTH_LONG).show()
+                            return@RequestAssistanceScreen
+                        }
+                        coroutineScope.launch {
+                            try {
+                                val disasterType = (payload["disaster"] as? String) ?: ""
+                                val categories = payload["categories"] as? List<*>
+                                val category = categories?.firstOrNull()?.toString() ?: ""
+                                val categoriesStr = org.json.JSONArray(categories ?: emptyList<Any>()).toString()
+                                val itemNeeded = payload["itemNeeded"] as? String ?: ""
+                                val quantity = payload["quantity"] as? String ?: ""
+                                val unit = payload["unit"] as? String ?: ""
+                                val description = payload["description"] as? String ?: ""
+                                val affectedPersons = (payload["affectedPersons"] as? Int) ?: 0
+                                val location = user.address
+
+                                val textMedia = "text/plain".toMediaTypeOrNull()
+                                val userIdBody = user.id.toRequestBody(textMedia)
+                                val disasterBody = disasterType.toRequestBody(textMedia)
+                                val categoryBody = category.toRequestBody(textMedia)
+                                val categoriesBody = categoriesStr.toRequestBody(textMedia)
+                                val itemBody = itemNeeded.toRequestBody(textMedia)
+                                val qtyBody = quantity.toRequestBody(textMedia)
+                                val unitBody = unit.toRequestBody(textMedia)
+                                val descBody = description.toRequestBody(textMedia)
+                                val personsBody = affectedPersons.toString().toRequestBody(textMedia)
+                                val locBody = location.toRequestBody(textMedia)
+
+                                var part: MultipartBody.Part? = null
+                                if (evidenceUri != null) {
+                                    try {
+                                        val inputStream = context.contentResolver.openInputStream(evidenceUri!!)
+                                        val file = File(context.cacheDir, "evidence.jpg")
+                                        inputStream?.use { input ->
+                                            file.outputStream().use { output -> input.copyTo(output) }
+                                        }
+                                        val reqFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                                        part = MultipartBody.Part.createFormData("evidenceImage", file.name, reqFile)
+                                    } catch (_: Exception) {
+                                    }
+                                }
+
+                                val resp = RetrofitClient.api.createRequest(
+                                    userIdBody,
+                                    disasterBody,
+                                    categoryBody,
+                                    categoriesBody,
+                                    itemBody,
+                                    qtyBody,
+                                    unitBody,
+                                    descBody,
+                                    personsBody,
+                                    locBody,
+                                    part,
+                                    user.id,
+                                    if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}",
+                                    user.authToken
+                                )
+                                Toast.makeText(context, "Request submitted", Toast.LENGTH_SHORT).show()
+                                try {
+                                    val reqs = RetrofitClient.api.getUserRequests(user.id, user.id, if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}", user.authToken)
+                                    userRequests.clear()
+                                    userRequests.addAll(reqs)
+                                } catch (_: Exception) {}
+                                currentScreen = AppScreen.MyRequests
+                            } catch (error: Exception) {
+                                Toast.makeText(context, readableErrorMessage(error), Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                )
+            }
             AppScreen.RequestDetails -> RequestDetailsScreen(
                 requestId = selectedRequestId,
                 onBack = {
@@ -406,7 +576,18 @@ fun BayanihanLinkApp() {
             )
             AppScreen.DonorHome -> DonorHomeScreen(
                 userName = loggedInUser?.fullName ?: "Guest",
-                needs = emptyList(),
+                needs = allNeeds.map { r ->
+                    com.example.bayanihanlink.donor.CommunityNeed(
+                        id = r.id,
+                        urgency = r.urgency ?: "NORMAL",
+                        title = r.disasterType ?: "",
+                        itemName = r.itemNeeded ?: "",
+                        neededQuantity = "${r.quantity ?: ""} ${r.unit ?: ""}".trim(),
+                        description = r.description ?: "",
+                        location = r.location ?: "",
+                        date = r.dateSubmitted?.take(10) ?: ""
+                    )
+                },
                 onViewRequest = { needId ->
                     selectedRequestId = needId
                     currentScreen = AppScreen.NeedDetails
@@ -422,7 +603,21 @@ fun BayanihanLinkApp() {
                 }
             )
             AppScreen.MyOffers -> MyOffersScreen(
-                offers = emptyList(),
+                offers = userOffers.map { o ->
+                    com.example.bayanihanlink.donor.DonationOffer(
+                        id = o._id ?: o.id ?: "",
+                        itemName = "",
+                        quantity = "${o.quantityOffered ?: ""} ${o.unit ?: ""}".trim(),
+                        relatedRequestId = o.requestId ?: "",
+                        date = o.createdAt?.take(10) ?: "",
+                        status = when (o.status) {
+                            "ACCEPTED", "DISTRIBUTED" -> com.example.bayanihanlink.donor.OfferStatus.DISTRIBUTED
+                            "COMPLETED" -> com.example.bayanihanlink.donor.OfferStatus.COMPLETED
+                            else -> com.example.bayanihanlink.donor.OfferStatus.COORDINATING
+                        },
+                        coordinatorNote = o.message
+                    )
+                },
                 onNavigateNeeds = {
                     currentScreen = AppScreen.DonorHome
                 },
@@ -434,11 +629,43 @@ fun BayanihanLinkApp() {
                 }
             )
             AppScreen.DonorAlerts -> DonorAlertsScreen(
-                notificationsList = emptyList(),
+                notificationsList = notifications.map { n ->
+                    val icon = when (n.type) {
+                        "OFFER_ACCEPTED" -> androidx.compose.material.icons.Icons.Filled.CheckCircle
+                        "OFFER_RECEIVED" -> androidx.compose.material.icons.Icons.Filled.Favorite
+                        else -> androidx.compose.material.icons.Icons.Filled.Notifications
+                    }
+                    val bg = when (n.type) {
+                        "OFFER_ACCEPTED" -> androidx.compose.ui.graphics.Color(0xFF3BB273)
+                        "OFFER_RECEIVED" -> androidx.compose.ui.graphics.Color(0xFFF5A623)
+                        else -> androidx.compose.ui.graphics.Color(0xFF9C4DCC)
+                    }
+                    com.example.bayanihanlink.donor.DonorNotification(
+                        icon = icon,
+                        iconBackground = bg,
+                        title = n.title ?: "",
+                        message = n.message ?: "",
+                        timeAgo = n.createdAt?.take(10) ?: "",
+                        isUnread = !(n.isRead ?: false),
+                        requestId = n.requestId ?: n.targetId,
+                        type = n.type
+                    )
+                },
                 onNotificationClick = { notification ->
                     if (notification.requestId != null) {
                         selectedRequestId = notification.requestId
                         currentScreen = AppScreen.NeedDetails
+                    }
+                    val n = notifications.find { (it._id == notification.requestId || it.requestId == notification.requestId) && it.isRead != true }
+                    if (n != null && loggedInUser != null) {
+                        coroutineScope.launch {
+                            try {
+                                val id = n._id ?: n.id ?: ""
+                                if (id.isNotEmpty()) {
+                                    RetrofitClient.api.markNotificationRead(id, loggedInUser!!.id, if (loggedInUser!!.authToken.isNullOrBlank()) null else "Bearer ${loggedInUser!!.authToken}", loggedInUser!!.authToken)
+                                }
+                            } catch (_: Exception) {}
+                        }
                     }
                 },
                 onNavigateNeeds = {
@@ -471,8 +698,41 @@ fun BayanihanLinkApp() {
                 onBackToNeedsBoard = {
                     currentScreen = AppScreen.DonorHome
                 },
-                onSubmitOffer = { _ ->
-                    // TODO: Submit to backend when endpoints are available
+                onSubmitOffer = { payload ->
+                    val user = loggedInUser
+                    if (user == null) {
+                        Toast.makeText(context, "Please log in again.", Toast.LENGTH_LONG).show()
+                        return@OfferAssistanceScreen
+                    }
+                    coroutineScope.launch {
+                        try {
+                            val qty = payload["quantityAvailable"] as? String ?: ""
+                            val unit = payload["unit"] as? String ?: ""
+                            val notes = payload["additionalNotes"] as? String ?: payload["description"] as? String ?: ""
+                            val offerReq = OfferRequest(
+                                donorId = user.id,
+                                requestId = selectedRequestId,
+                                quantityOffered = qty,
+                                unit = unit,
+                                message = notes
+                            )
+                            RetrofitClient.api.createOffer(
+                                offerReq,
+                                user.id,
+                                if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}",
+                                user.authToken
+                            )
+                            Toast.makeText(context, "Offer submitted", Toast.LENGTH_SHORT).show()
+                            try {
+                                val offers = RetrofitClient.api.getOffersByUser(user.id, user.id, if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}", user.authToken)
+                                userOffers.clear()
+                                userOffers.addAll(offers)
+                            } catch (_: Exception) {}
+                            currentScreen = AppScreen.MyOffers
+                        } catch (error: Exception) {
+                            Toast.makeText(context, readableErrorMessage(error), Toast.LENGTH_LONG).show()
+                        }
+                    }
                 }
             )
         }
