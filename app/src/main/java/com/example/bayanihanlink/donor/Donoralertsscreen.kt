@@ -55,13 +55,15 @@ private val LabelGray = Color(0xFF8A8FA3)
 private val BorderGray = Color(0xFFE3E5EC)
 
 // One notification shown in the list.
-private data class DonorNotification(
+data class DonorNotification(
     val icon: ImageVector,
     val iconBackground: Color,
     val title: String,
     val message: String,
     val timeAgo: String,
-    val isUnread: Boolean
+    val isUnread: Boolean,
+    val requestId: String? = null,
+    val type: String? = null
 )
 
 // Sample data so this screen works right away. Replace with real
@@ -111,13 +113,15 @@ private fun buildSampleDonorNotifications() = listOf(
 
 @Composable
 fun DonorAlertsScreen(
+    notificationsList: List<DonorNotification> = emptyList(),
+    onNotificationClick: (DonorNotification) -> Unit = {},
     onNavigateNeeds: () -> Unit = {},
     onNavigateMyOffers: () -> Unit = {},
     onNavigateProfile: () -> Unit = {}
 ) {
     // "remember" keeps this list in memory as long as we're on this screen,
     // and lets us update it (for example, when "Mark all as read" is tapped).
-    var notifications by remember { mutableStateOf(buildSampleDonorNotifications()) }
+    var notifications by remember { mutableStateOf(notificationsList.ifEmpty { buildSampleDonorNotifications() }) }
 
     val unreadCount = notifications.count { it.isUnread }
 
@@ -149,13 +153,9 @@ fun DonorAlertsScreen(
                     color = AccentBlue,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            notifications = notifications.map { it.copy(isUnread = false) }
-                        }
-                    )
+                    modifier = Modifier.clickable {
+                        notifications = notifications.map { it.copy(isUnread = false) }
+                    }
                 )
             }
 
@@ -176,7 +176,10 @@ fun DonorAlertsScreen(
                     .padding(horizontal = 20.dp)
             ) {
                 notifications.forEach { notification ->
-                    DonorNotificationCard(notification = notification)
+                    DonorNotificationCard(
+                        notification = notification,
+                        onClick = { onNotificationClick(notification) }
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -186,13 +189,14 @@ fun DonorAlertsScreen(
 }
 
 @Composable
-private fun DonorNotificationCard(notification: DonorNotification) {
+private fun DonorNotificationCard(notification: DonorNotification, onClick: () -> Unit = {}) {
     Box {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
                 .background(Color.White, RoundedCornerShape(16.dp))
+                .clickable { onClick() }
                 .padding(14.dp),
             verticalAlignment = Alignment.Top
         ) {

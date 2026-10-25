@@ -51,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+// Prepare for backend integration: submit to API when available
 private val AccentBlue = Color(0xFF2B49CC)
 private val LabelGray = Color(0xFF8A8FA3)
 private val BorderGray = Color(0xFFE3E5EC)
@@ -100,26 +102,31 @@ private val unitOptions = listOf("packs", "kg", "liters", "pieces", "sets", "box
 
 @Composable
 fun RequestAssistanceScreen(
+    userAddress: String = "",
+    userContact: String = "",
     onExit: () -> Unit = {},
     onViewMyRequest: () -> Unit = {},
-    onBackToHome: () -> Unit = {}
+    onBackToHome: () -> Unit = {},
+    onSubmitRequest: (Map<String, Any>) -> Unit = {}
 ) {
     // Which step of the wizard we're currently showing.
-    var currentStep by remember { mutableStateOf(WizardStep.DISASTER) }
+    var currentStep by rememberSaveable { mutableStateOf(WizardStep.DISASTER) }
 
     // Everything the user picks/types, kept in one place.
-    var selectedDisaster by remember { mutableStateOf<DisasterType?>(null) }
-    var selectedCategory by remember { mutableStateOf<AssistanceCategory?>(null) }
-    var itemNeeded by remember { mutableStateOf("") }
-    var quantity by remember { mutableStateOf("") }
-    var unit by remember { mutableStateOf(unitOptions.first()) }
-    var description by remember { mutableStateOf("") }
-    var affectedPersons by remember { mutableStateOf("") }
+    var selectedDisaster by rememberSaveable { mutableStateOf<DisasterType?>(null) }
+    var selectedCategories by rememberSaveable { mutableStateOf(setOf<AssistanceCategory>()) }
+    var itemNeeded by rememberSaveable { mutableStateOf("") }
+    var quantity by rememberSaveable { mutableStateOf("") }
+    var unit by rememberSaveable { mutableStateOf(unitOptions.first()) }
+    var description by rememberSaveable { mutableStateOf("") }
+    var affectedPersons by rememberSaveable { mutableStateOf("") }
+    var hasEvidence by rememberSaveable { mutableStateOf(false) }
 
     // The Next button on each step is only enabled once the required info is filled in.
     val isDisasterStepValid = selectedDisaster != null
-    val isNeedsStepValid = selectedCategory != null
-    val isDetailsStepValid = itemNeeded.isNotBlank() && quantity.isNotBlank() && affectedPersons.isNotBlank()
+    val isNeedsStepValid = selectedCategories.isNotEmpty()
+    val affectedCount = affectedPersons.trim().toIntOrNull()
+    val isDetailsStepValid = itemNeeded.isNotBlank() && quantity.isNotBlank() && affectedPersons.isNotBlank() && affectedCount != null && affectedCount > 13 && hasEvidence
 
     if (currentStep == WizardStep.SUCCESS) {
         RequestSubmittedScreen(
@@ -134,8 +141,7 @@ fun RequestAssistanceScreen(
             .fillMaxSize()
             .background(Color.White)
     ) {
-        // Top bar: back arrow + title. Always exits the whole screen (goes back to Home),
-        // separate from the "Back" button at the bottom which just goes one step back.
+        // Top bar: back arrow + title.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp)
@@ -161,8 +167,14 @@ fun RequestAssistanceScreen(
                     onSelect = { selectedDisaster = it }
                 )
                 WizardStep.NEEDS -> NeedsStep(
-                    selected = selectedCategory,
-                    onSelect = { selectedCategory = it }
+                    selected = selectedCategories,
+                    onToggle = { category ->
+                        selectedCategories = if (selectedCategories.contains(category)) {
+                            selectedCategories - category
+                        } else {
+                            selectedCategories + category
+                        }
+                    }
                 )
                 WizardStep.DETAILS -> DetailsStep(
                     itemNeeded = itemNeeded,
@@ -174,17 +186,21 @@ fun RequestAssistanceScreen(
                     description = description,
                     onDescriptionChange = { description = it },
                     affectedPersons = affectedPersons,
-                    onAffectedPersonsChange = { affectedPersons = it }
+                    onAffectedPersonsChange = { affectedPersons = it },
+                    hasEvidence = hasEvidence,
+                    onEvidenceChange = { hasEvidence = it }
                 )
                 WizardStep.REVIEW -> ReviewStep(
                     disaster = selectedDisaster,
-                    category = selectedCategory,
+                    categories = selectedCategories,
                     itemNeeded = itemNeeded,
                     quantity = quantity,
                     unit = unit,
-                    affectedPersons = affectedPersons
+                    affectedPersons = affectedPersons,
+                    address = userAddress,
+                    contact = userContact
                 )
-                WizardStep.SUCCESS -> Unit // handled above, never reached here
+                WizardStep.SUCCESS -> Unit
             }
         }
 
@@ -213,14 +229,23 @@ fun RequestAssistanceScreen(
                 WizardStep.DISASTER -> isDisasterStepValid
                 WizardStep.NEEDS -> isNeedsStepValid
                 WizardStep.DETAILS -> isDetailsStepValid
-                WizardStep.REVIEW -> true // review step has nothing left to fill in
+                WizardStep.REVIEW -> true
                 WizardStep.SUCCESS -> true
             }
 
             Button(
                 onClick = {
                     if (currentStep == WizardStep.REVIEW) {
-
+                        val payload = mapOf(
+                            "disaster" to (selectedDisaster?.label ?: ""),
+                            "categories" to selectedCategories.map { it.label },
+                            "itemNeeded" to itemNeeded,
+                            "quantity" to quantity,
+                            "unit" to unit,
+                            "affectedPersons" to (affectedCount ?: 0),
+                            "description" to description
+                        )
+                        onSubmitRequest(payload)
                         currentStep = WizardStep.SUCCESS
                     } else {
                         currentStep = WizardStep.entries[currentStep.ordinal + 1]
@@ -261,19 +286,82 @@ private fun DisasterStep(selected: DisasterType?, onSelect: (DisasterType) -> Un
 
 // ---------- Step 2: "What type of assistance do you need?" ----------
 @Composable
-private fun NeedsStep(selected: AssistanceCategory?, onSelect: (AssistanceCategory) -> Unit) {
+private fun NeedsStep(selected: Set<AssistanceCategory>, onToggle: (AssistanceCategory) -> Unit) {
     Text("What type of assistance do you need?", fontSize = 17.sp, fontWeight = FontWeight.Bold)
     Spacer(modifier = Modifier.height(4.dp))
-    Text("Select the category that best matches your need.", fontSize = 13.sp, color = LabelGray)
+    Text("Select one or more categories.", fontSize = 13.sp, color = LabelGray)
     Spacer(modifier = Modifier.height(16.dp))
 
-    OptionGrid(
+    OptionGridMulti(
         options = AssistanceCategory.entries,
         selected = selected,
-        onSelect = onSelect,
+        onToggle = onToggle,
         label = { it.label },
         icon = { it.icon }
     )
+}
+
+@Composable
+private fun <T> OptionGridMulti(
+    options: List<T>,
+    selected: Set<T>,
+    onToggle: (T) -> Unit,
+    label: (T) -> String,
+    icon: (T) -> ImageVector
+) {
+    options.chunked(2).forEach { rowItems ->
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            rowItems.forEach { option ->
+                OptionCardMulti(
+                    label = label(option),
+                    icon = icon(option),
+                    isSelected = selected.contains(option),
+                    onClick = { onToggle(option) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            if (rowItems.size == 1) {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun OptionCardMulti(
+    label: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = if (isSelected) AccentBlue else BorderGray,
+                shape = RoundedCornerShape(14.dp)
+            )
+            .background(
+                color = if (isSelected) Color(0xFFEEF0FC) else Color.White,
+                shape = RoundedCornerShape(14.dp)
+            )
+            .clickable { onClick() }
+            .padding(16.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (isSelected) AccentBlue else LabelGray,
+            modifier = Modifier.size(26.dp)
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1A1A2E))
+    }
 }
 
 // A reusable 2-column grid of selectable icon cards. Works for both
@@ -286,7 +374,6 @@ private fun <T> OptionGrid(
     label: (T) -> String,
     icon: (T) -> ImageVector
 ) {
-    // Split the list into rows of 2, then draw each row as a Row of 2 cards.
     options.chunked(2).forEach { rowItems ->
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -301,8 +388,6 @@ private fun <T> OptionGrid(
                     modifier = Modifier.weight(1f)
                 )
             }
-            // If a row only has 1 item (odd number of options), add empty space
-            // so it doesn't stretch to fill the whole row.
             if (rowItems.size == 1) {
                 Spacer(modifier = Modifier.weight(1f))
             }
@@ -330,11 +415,7 @@ private fun OptionCard(
                 color = if (isSelected) Color(0xFFEEF0FC) else Color.White,
                 shape = RoundedCornerShape(14.dp)
             )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
+            .clickable { onClick() }
             .padding(16.dp)
     ) {
         Icon(
@@ -360,7 +441,9 @@ private fun DetailsStep(
     description: String,
     onDescriptionChange: (String) -> Unit,
     affectedPersons: String,
-    onAffectedPersonsChange: (String) -> Unit
+    onAffectedPersonsChange: (String) -> Unit,
+    hasEvidence: Boolean,
+    onEvidenceChange: (Boolean) -> Unit
 ) {
     Text("Provide details about your need", fontSize = 17.sp, fontWeight = FontWeight.Bold)
     Spacer(modifier = Modifier.height(16.dp))
@@ -403,7 +486,7 @@ private fun DetailsStep(
     OutlinedTextField(
         value = description,
         onValueChange = onDescriptionChange,
-        placeholder = { Text("To donate..") },
+        placeholder = { Text("Describe your need...") },
         shape = RoundedCornerShape(14.dp),
         colors = fieldColors(),
         modifier = Modifier
@@ -423,6 +506,20 @@ private fun DetailsStep(
         colors = fieldColors(),
         modifier = Modifier.fillMaxWidth()
     )
+    Text("Must be greater than 13.", fontSize = 11.sp, color = LabelGray)
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    FieldLabel("PICTURE EVIDENCE (REQUIRED)")
+    Button(
+        onClick = { onEvidenceChange(true) },
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = if (hasEvidence) DoneGreen else AccentBlue),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(if (hasEvidence) "Evidence Attached" else "Attach Picture Evidence", fontWeight = FontWeight.SemiBold)
+    }
+    Text("Upload pending backend integration.", fontSize = 11.sp, color = LabelGray)
 }
 
 @Composable
@@ -481,17 +578,14 @@ private fun UnitDropdown(selectedUnit: String, onUnitSelected: (String) -> Unit)
 @Composable
 private fun ReviewStep(
     disaster: DisasterType?,
-    category: AssistanceCategory?,
+    categories: Set<AssistanceCategory>,
     itemNeeded: String,
     quantity: String,
     unit: String,
-    affectedPersons: String
+    affectedPersons: String,
+    address: String,
+    contact: String
 ) {
-    // In a real app, address and contact would come from the logged-in
-    // user's profile. Hardcoded here to match the sample profile we made earlier.
-    val address = "Brgy. 14, Cagayan de Oro City"
-    val contact = "+63 912 345 6789"
-
     Text("Review Your Request", fontSize = 17.sp, fontWeight = FontWeight.Bold)
     Spacer(modifier = Modifier.height(4.dp))
     Text("Please review before submitting.", fontSize = 13.sp, color = LabelGray)
@@ -504,12 +598,12 @@ private fun ReviewStep(
             .padding(16.dp)
     ) {
         ReviewRow("Disaster Type", disaster?.label ?: "-")
-        ReviewRow("Category", category?.label ?: "-")
+        ReviewRow("Categories", if (categories.isEmpty()) "-" else categories.joinToString(", ") { it.label })
         ReviewRow("Item Needed", itemNeeded)
         ReviewRow("Quantity", "$quantity $unit")
         ReviewRow("Persons Affected", affectedPersons)
-        ReviewRow("Address", address)
-        ReviewRow("Contact", contact, showDivider = false)
+        ReviewRow("Address", if (address.isBlank()) "-" else address)
+        ReviewRow("Contact", if (contact.isBlank()) "-" else contact, showDivider = false)
     }
 
     Spacer(modifier = Modifier.height(14.dp))

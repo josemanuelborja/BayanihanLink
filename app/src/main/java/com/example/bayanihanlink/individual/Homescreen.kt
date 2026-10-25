@@ -37,10 +37,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,7 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Same colors used across the whole app, so everything matches.
+// Prepare for backend integration: replace hardcoded data with real API data when available
 private val AccentBlue = Color(0xFF2B49CC)
 private val AlertOrange = Color(0xFFF5A623)
 private val UrgentPink = Color(0xFFFCE4EC)
@@ -70,7 +67,7 @@ private val requestSteps = listOf(
 )
 
 // One row in the "Recent Updates" list.
-private data class UpdateItem(
+data class UpdateItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val iconBackground: Color,
     val message: String,
@@ -79,7 +76,19 @@ private data class UpdateItem(
 
 @Composable
 fun HomeScreen(
-    userName: String = "Maria Santos",
+    userName: String = "",
+    activeRequestId: String? = null,
+    activeRequestTitle: String = "",
+    activeRequestItems: String = "",
+    activeRequestUrgency: String = "",
+    activeRequestStatusLabel: String = "",
+    activeRequestStep: Int = 1,
+    totalRequests: Int = 0,
+    verifiedRequests: Int = 0,
+    completedRequests: Int = 0,
+    recentUpdates: List<UpdateItem> = emptyList(),
+    alertBannerTitle: String? = null,
+    alertBannerMessage: String? = null,
     onRequestAssistance: () -> Unit = {},
     onViewRequestDetails: () -> Unit = {},
     onNavigateMyRequest: () -> Unit = {},
@@ -105,7 +114,7 @@ fun HomeScreen(
                 .background(Color.White)
                 .verticalScroll(rememberScrollState())
         ) {
-            HomeHeader(userName = userName)
+            HomeHeader(userName = userName, alertTitle = alertBannerTitle, alertMessage = alertBannerMessage)
 
             Column(
                 modifier = Modifier
@@ -118,15 +127,24 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                ActiveRequestSection(onViewDetails = onViewRequestDetails)
+                if (activeRequestId != null) {
+                    ActiveRequestSection(
+                        requestId = activeRequestId,
+                        title = activeRequestTitle,
+                        items = activeRequestItems,
+                        urgency = activeRequestUrgency,
+                        statusLabel = activeRequestStatusLabel,
+                        currentStep = activeRequestStep,
+                        onViewDetails = onViewRequestDetails
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+
+                OverviewSection(total = totalRequests, verified = verifiedRequests, completed = completedRequests)
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                OverviewSection()
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                RecentUpdatesSection()
+                RecentUpdatesSection(updates = recentUpdates)
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -134,19 +152,21 @@ fun HomeScreen(
     }
 }
 
-// ---------- Top blue header: greeting + avatar + typhoon alert banner ----------
+// ---------- Top blue header: greeting + avatar + alert banner ----------
 @Composable
-private fun HomeHeader(userName: String) {
-    // Turn "Maria Santos" into initials "MS" for the little avatar circle.
+private fun HomeHeader(userName: String, alertTitle: String? = null, alertMessage: String? = null) {
+    // Turn name into initials
     val initials = remember(userName) {
-        userName.split(" ")
-            .filter { it.isNotBlank() }
-            .take(2)
-            .joinToString("") { it.first().uppercase() }
+        if (userName.isBlank()) {
+            "U"
+        } else {
+            userName.split(" ")
+                .filter { it.isNotBlank() }
+                .take(2)
+                .joinToString("") { it.first().uppercase() }
+        }
     }
 
-    // Everything here (greeting + banner) stays INSIDE this one blue block now
-    // (matches the reference image), instead of the banner poking outside it.
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -155,7 +175,7 @@ private fun HomeHeader(userName: String) {
                 shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
             )
             .padding(horizontal = 20.dp)
-            .padding(top = 20.dp, bottom = 44.dp) // extra bottom room for the white sheet to overlap into
+            .padding(top = 20.dp, bottom = 44.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -169,13 +189,12 @@ private fun HomeHeader(userName: String) {
                     fontSize = 14.sp
                 )
                 Text(
-                    text = userName,
+                    text = if (userName.isBlank()) "Citizen" else userName,
                     color = Color.White,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
-            // Avatar circle with initials
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -187,43 +206,44 @@ private fun HomeHeader(userName: String) {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Alert banner: a see-through light card (NOT solid orange) sitting
-        // inside the blue block, with a small solid-orange square just for the icon.
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(14.dp))
-                .padding(horizontal = 14.dp, vertical = 12.dp)
-        ) {
-            Box(
+        if (alertTitle != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .size(36.dp)
-                    .background(AlertOrange, RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
-                Icon(
-                    Icons.Default.Bolt,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = "Typhoon Carina - Active",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = "Relief operations ongoing in your area",
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = 12.sp
-                )
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(AlertOrange, RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Bolt,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = alertTitle,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    if (alertMessage != null) {
+                        Text(
+                            text = alertMessage,
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
             }
         }
     }
@@ -260,7 +280,15 @@ private fun RequestAssistanceCard(onClick: () -> Unit) {
 
 // ---------- "My Active Request" card with the step tracker ----------
 @Composable
-private fun ActiveRequestSection(onViewDetails: () -> Unit) {
+private fun ActiveRequestSection(
+    requestId: String,
+    title: String,
+    items: String,
+    urgency: String,
+    statusLabel: String,
+    currentStep: Int,
+    onViewDetails: () -> Unit
+) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Text("My Active Request", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(10.dp))
@@ -277,21 +305,31 @@ private fun ActiveRequestSection(onViewDetails: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
-                    Text("#BL-000234", fontSize = 12.sp, color = LabelGray)
-                    Text("Typhoon Assistance", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text("Food & Drinking Water", fontSize = 13.sp, color = LabelGray)
+                    Text(requestId, fontSize = 12.sp, color = LabelGray)
+                    Text(if (title.isBlank()) "Request" else title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    if (items.isNotBlank()) {
+                        Text(items, fontSize = 13.sp, color = LabelGray)
+                    }
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    StatusTag(text = "URGENT", background = UrgentPink, textColor = UrgentText)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    StatusTag(text = "Verified", background = VerifiedBlueBg, textColor = VerifiedBlueText)
+                    if (urgency.isNotBlank()) {
+                        val (bg, tc) = when (urgency.uppercase()) {
+                            "CRITICAL" -> Color(0xFFFAD9DC) to Color(0xFFC62828)
+                            "URGENT" -> UrgentPink to UrgentText
+                            else -> Color(0xFFDFF3E3) to Color(0xFF2E7D32)
+                        }
+                        StatusTag(text = urgency.uppercase(), background = bg, textColor = tc)
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+                    if (statusLabel.isNotBlank()) {
+                        StatusTag(text = statusLabel, background = VerifiedBlueBg, textColor = VerifiedBlueText)
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // currentStep = 3 means "Offered" is the active step (matches the screenshot)
-            StepTracker(currentStep = 3)
+            StepTracker(currentStep = if (currentStep < 1) 1 else if (currentStep > 4) 4 else currentStep)
 
             Spacer(modifier = Modifier.height(14.dp))
 
@@ -396,14 +434,14 @@ private fun StepTracker(currentStep: Int) {
 
 // ---------- "Overview" section: 3 stat boxes ----------
 @Composable
-private fun OverviewSection() {
+private fun OverviewSection(total: Int = 0, verified: Int = 0, completed: Int = 0) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Text("Overview", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatBox(value = "2", label = "Total Request", valueColor = Color(0xFF1A1A2E), modifier = Modifier.weight(1f))
-            StatBox(value = "1", label = "Verified", valueColor = Color(0xFF3BB273), modifier = Modifier.weight(1f))
-            StatBox(value = "0", label = "Completed", valueColor = AccentBlue, modifier = Modifier.weight(1f))
+            StatBox(value = total.toString(), label = "Total Request", valueColor = Color(0xFF1A1A2E), modifier = Modifier.weight(1f))
+            StatBox(value = verified.toString(), label = "Verified", valueColor = Color(0xFF3BB273), modifier = Modifier.weight(1f))
+            StatBox(value = completed.toString(), label = "Completed", valueColor = AccentBlue, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -424,60 +462,48 @@ private fun StatBox(value: String, label: String, valueColor: Color, modifier: M
 
 // ---------- "Recent Updates" section ----------
 @Composable
-private fun RecentUpdatesSection() {
-    val updates = listOf(
-        UpdateItem(
-            icon = Icons.Default.CheckCircle,
-            iconBackground = Color(0xFF3BB273),
-            message = "Your request #BL-000234 has been verified by the administrator.",
-            timeAgo = "2 hours ago"
-        ),
-        UpdateItem(
-            icon = Icons.Default.Favorite,
-            iconBackground = AlertOrange,
-            message = "A donor has offered assistance for your request.",
-            timeAgo = "5 hours ago"
-        ),
-        UpdateItem(
-            icon = Icons.Default.Star,
-            iconBackground = Color(0xFF3BB273),
-            message = "Your request #BL-000210 has been completed.",
-            timeAgo = "3 days ago"
-        )
-    )
-
+private fun RecentUpdatesSection(updates: List<UpdateItem>) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Text("Recent Updates", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(10.dp))
 
-        updates.forEach { update ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 10.dp)
-                    .background(Color.White, RoundedCornerShape(14.dp))
-                    .padding(12.dp)
-            ) {
-                Box(
+        if (updates.isEmpty()) {
+            Text(
+                text = "No recent updates yet.",
+                fontSize = 13.sp,
+                color = LabelGray,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        } else {
+            updates.forEach { update ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(update.iconBackground),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp)
+                        .background(Color.White, RoundedCornerShape(14.dp))
+                        .padding(12.dp)
                 ) {
-                    Icon(
-                        imageVector = update.icon,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(text = update.message, fontSize = 13.sp, color = Color(0xFF1A1A2E))
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(text = update.timeAgo, fontSize = 11.sp, color = LabelGray)
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(update.iconBackground),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = update.icon,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(text = update.message, fontSize = 13.sp, color = Color(0xFF1A1A2E))
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(text = update.timeAgo, fontSize = 11.sp, color = LabelGray)
+                    }
                 }
             }
         }

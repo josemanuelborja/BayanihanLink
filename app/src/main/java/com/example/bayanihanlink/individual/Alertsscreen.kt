@@ -61,7 +61,9 @@ data class NotificationItem(
     val title: String,
     val message: String,
     val timeAgo: String,
-    val isUnread: Boolean
+    val isUnread: Boolean,
+    val requestId: String? = null,
+    val type: String? = null
 )
 
 // Sample data so you can see the screen working. Replace this later with real
@@ -119,13 +121,15 @@ private fun buildSampleNotifications() = listOf(
 
 @Composable
 fun AlertsScreen(
+    notificationsList: List<NotificationItem> = emptyList(),
+    onNotificationClick: (NotificationItem) -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onNavigateMyRequest: () -> Unit = {},
     onNavigateProfile: () -> Unit = {}
 ) {
     // "remember" keeps this list in memory as long as we're on this screen,
     // and lets us update it (for example, when "Mark all as read" is tapped).
-    var notifications by remember { mutableStateOf(buildSampleNotifications()) }
+    var notifications by remember { mutableStateOf(notificationsList.ifEmpty { buildSampleNotifications() }) }
 
     // How many notifications are still unread — shown in the subtitle line.
     val unreadCount = notifications.count { it.isUnread }
@@ -159,14 +163,9 @@ fun AlertsScreen(
                     color = AccentBlue,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            // Turn every notification's isUnread to false.
-                            notifications = notifications.map { it.copy(isUnread = false) }
-                        }
-                    )
+                    modifier = Modifier.clickable {
+                        notifications = notifications.map { it.copy(isUnread = false) }
+                    }
                 )
             }
 
@@ -187,7 +186,10 @@ fun AlertsScreen(
                     .padding(horizontal = 20.dp)
             ) {
                 notifications.forEach { notification ->
-                    NotificationCard(notification = notification)
+                    NotificationCard(
+                        notification = notification,
+                        onClick = { onNotificationClick(notification) }
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -197,13 +199,14 @@ fun AlertsScreen(
 }
 
 @Composable
-private fun NotificationCard(notification: NotificationItem) {
+private fun NotificationCard(notification: NotificationItem, onClick: () -> Unit = {}) {
     Box {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(width = 1.dp, color = BorderGray, shape = RoundedCornerShape(16.dp))
                 .background(Color.White, RoundedCornerShape(16.dp))
+                .clickable { onClick() }
                 .padding(14.dp),
             verticalAlignment = Alignment.Top
         ) {

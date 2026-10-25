@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Description
@@ -32,7 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bayanihanlink.R
 
+// Prepare for backend integration: use real requests when available
 private val AccentBlue = Color(0xFF2B49CC)
 private val LabelGray = Color(0xFF8A8FA3)
 private val BorderGray = Color(0xFFE3E5EC)
@@ -50,7 +51,7 @@ private val BorderGray = Color(0xFFE3E5EC)
 // The real status of a request. Every request card is assigned exactly ONE of these.
 enum class RequestStatus { PENDING, VERIFIED, ASSISTED, COMPLETED }
 
-// The filter tabs at the top. "ALL" is extra — it just means "don't filter, show everything".
+// The filter tabs at the top.
 enum class RequestFilter { ALL, PENDING, VERIFIED, ASSISTED, COMPLETED }
 
 // All the info shown on one request card.
@@ -65,58 +66,20 @@ data class RequestItem(
     val recencyOrder: Int
 )
 
-// Sample data so you can see the screen working. Replace this later with real
-// requests coming from your database/backend.
-private val sampleRequests = listOf(
-    RequestItem(
-        id = "#BL-000234",
-        title = "Typhoon Assistance",
-        items = "Food, Drinking Water",
-        quantity = "10 packs, 50 bottles",
-        date = "Sep 15, 2026",
-        urgency = "URGENT",
-        status = RequestStatus.VERIFIED,
-        recencyOrder = 3
-    ),
-    RequestItem(
-        id = "#BL-000210",
-        title = "Flood Assistance",
-        items = "Clothing, Blankets",
-        quantity = "20 sets, 10 pieces",
-        date = "Sep 8, 2026",
-        urgency = "NORMAL",
-        status = RequestStatus.COMPLETED,
-        recencyOrder = 2
-    ),
-    RequestItem(
-        id = "#BL-00189",
-        title = "Typhoon Assistance",
-        items = "Medicine",
-        quantity = "5 packs",
-        date = "Sep 3, 2026",
-        urgency = "CRITICAL",
-        status = RequestStatus.ASSISTED,
-        recencyOrder = 1
-    )
-)
-
 @Composable
 fun MyRequestsScreen(
+    requests: List<RequestItem> = emptyList(),
     onViewDetails: (RequestItem) -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onNavigateAlerts: () -> Unit = {},
     onNavigateProfile: () -> Unit = {}
 ) {
-    // Which filter tab is currently selected. Starts on "All".
-    var selectedFilter by remember { mutableStateOf(RequestFilter.ALL) }
+    // Which filter tab is currently selected.
+    var selectedFilter by rememberSaveable { mutableStateOf(RequestFilter.ALL) }
 
-    // Step 1: keep only the requests that match the selected filter.
-    // "ALL" means don't filter anything out.
-    val filteredRequests = sampleRequests.filter { request ->
+    val filteredRequests = requests.filter { request ->
         selectedFilter == RequestFilter.ALL || request.status.name == selectedFilter.name
-    }
-        // Step 2: sort so the newest request (highest recencyOrder) is always first.
-        .sortedByDescending { it.recencyOrder }
+    }.sortedByDescending { it.recencyOrder }
 
     Scaffold(
         bottomBar = {
@@ -133,12 +96,19 @@ fun MyRequestsScreen(
                 .padding(innerPadding)
                 .background(Color.White)
         ) {
-            Text(
-                text = "My Requests",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 12.dp)
-            )
+            // Sticky top bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+            ) {
+                Text(
+                    text = "My Requests",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 12.dp)
+                )
+            }
 
             FilterTabsRow(
                 selectedFilter = selectedFilter,
@@ -150,7 +120,12 @@ fun MyRequestsScreen(
             if (filteredRequests.isEmpty()) {
                 EmptyState(selectedFilter = selectedFilter)
             } else {
-                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp)
+                ) {
                     filteredRequests.forEach { request ->
                         RequestCard(
                             request = request,
@@ -158,6 +133,7 @@ fun MyRequestsScreen(
                         )
                         Spacer(modifier = Modifier.height(14.dp))
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -204,11 +180,7 @@ private fun FilterChip(label: String, isSelected: Boolean, onClick: () -> Unit) 
                 color = if (isSelected) AccentBlue else BorderGray,
                 shape = RoundedCornerShape(20.dp)
             )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
+            .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Text(
@@ -258,6 +230,7 @@ private fun RequestCard(request: RequestItem, onViewDetails: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .border(width = 1.dp, color = BorderGray, shape = RoundedCornerShape(16.dp))
+            .clickable { onViewDetails() }
             .padding(16.dp)
     ) {
         Row(
@@ -281,19 +254,6 @@ private fun RequestCard(request: RequestItem, onViewDetails: () -> Unit) {
         LabeledRow(label = "Qty", value = request.quantity)
         Spacer(modifier = Modifier.height(4.dp))
         LabeledRow(label = "Date", value = request.date)
-
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "View Details \u2192",
-            color = AccentBlue,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 13.sp,
-            modifier = Modifier.clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onViewDetails
-            )
-        )
     }
 }
 

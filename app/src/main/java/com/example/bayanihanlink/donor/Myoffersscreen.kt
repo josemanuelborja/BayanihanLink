@@ -42,10 +42,10 @@ private val MintBg = Color(0xFFEFFAF3)
 private val BorderGray = Color(0xFFE3E5EC)
 
 // The 3 stages a donation offer can be in.
-private enum class OfferStatus { COORDINATING, DISTRIBUTED, COMPLETED }
+enum class OfferStatus { COORDINATING, DISTRIBUTED, COMPLETED }
 
 // One row in the offers list.
-private data class DonationOffer(
+data class DonationOffer(
     val id: String,
     val itemName: String,
     val quantity: String,
@@ -87,16 +87,15 @@ private val sampleOffers = listOf(
 
 @Composable
 fun MyOffersScreen(
+    offers: List<DonationOffer> = emptyList(),
     onNavigateNeeds: () -> Unit = {},
     onNavigateAlerts: () -> Unit = {},
     onNavigateProfile: () -> Unit = {}
 ) {
-    // Counts for the 3 stat boxes, worked out from the list itself instead
-    // of being typed in by hand — so they're always correct no matter how
-    // many offers are in the list.
-    val totalOffers = sampleOffers.size
-    val activeOffers = sampleOffers.count { it.status == OfferStatus.COORDINATING }
-    val completedOffers = sampleOffers.count {
+    val offersList = if (offers.isEmpty()) sampleOffers else offers
+    val totalOffers = offersList.size
+    val activeOffers = offersList.count { it.status == OfferStatus.COORDINATING }
+    val completedOffers = offersList.count {
         it.status == OfferStatus.DISTRIBUTED || it.status == OfferStatus.COMPLETED
     }
 
@@ -149,7 +148,7 @@ fun MyOffersScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                sampleOffers.forEach { offer ->
+                offersList.forEach { offer ->
                     OfferCard(offer)
                     Spacer(modifier = Modifier.height(14.dp))
                 }

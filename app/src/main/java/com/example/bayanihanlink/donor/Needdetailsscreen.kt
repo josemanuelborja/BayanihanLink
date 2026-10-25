@@ -80,10 +80,11 @@ private fun sampleNeedDetail(needId: String): NeedDetail = NeedDetail(
 @Composable
 fun NeedDetailsScreen(
     needId: String,
+    detail: NeedDetail? = null,
     onBack: () -> Unit = {},
     onOfferAssistance: () -> Unit = {}
 ) {
-    val detail = sampleNeedDetail(needId)
+    val detailData = detail ?: sampleNeedDetail(needId)
 
     Column(
         modifier = Modifier
@@ -102,12 +103,17 @@ fun NeedDetailsScreen(
             Text("Request Details", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         }
 
-        // Red/urgency-colored header card
+        // Urgency-colored header card
+        val headerColor = when (detailData.urgency.uppercase()) {
+            "CRITICAL" -> CriticalRed
+            "URGENT" -> OfferOrange
+            else -> DoneGreen
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
-                .background(CriticalRed, RoundedCornerShape(16.dp))
+                .background(headerColor, RoundedCornerShape(16.dp))
                 .padding(16.dp)
         ) {
             Row(
@@ -119,16 +125,16 @@ fun NeedDetailsScreen(
                         .background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
-                    Text(detail.urgency, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(detailData.urgency.uppercase(), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
-                if (detail.isVerified) {
+                if (detailData.isVerified) {
                     Text("\u25CF Verified", color = Color.White, fontSize = 12.sp)
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))
-            Text(detail.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(detailData.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(2.dp))
-            Text("${detail.id} \u00B7 ${detail.date}", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
+            Text("${detailData.id} \u00B7 ${detailData.date}", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -144,19 +150,22 @@ fun NeedDetailsScreen(
                 Text("Request Information", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    InfoPair("Disaster", detail.disasterType, Modifier.weight(1f))
-                    InfoPair("Category", detail.category, Modifier.weight(1f))
+                    InfoPair("Disaster", detailData.disasterType, Modifier.weight(1f))
+                    InfoPair("Category", detailData.category, Modifier.weight(1f))
                 }
                 Spacer(modifier = Modifier.height(14.dp))
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    InfoPair("Urgency", detail.urgency.lowercase().replaceFirstChar { it.uppercase() }, Modifier.weight(1f))
-                    InfoPair("Location", detail.location, Modifier.weight(1f))
+                    InfoPair("Urgency", detailData.urgency.lowercase().replaceFirstChar { it.uppercase() }, Modifier.weight(1f))
+                    InfoPair("Location", detailData.location, Modifier.weight(1f))
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // "Items Needed" card
+            if (detailData.urgency.uppercase() != "CRITICAL") {
+                // For non-critical, ensure evidence context noted (backend-dependent)
+            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -173,16 +182,16 @@ fun NeedDetailsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text(detail.itemName, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(detailData.itemName, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         Text("Urgently Needed", fontSize = 12.sp, color = LabelGray)
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text("Needed", fontSize = 12.sp, color = LabelGray)
-                        Text(detail.neededQuantityLabel, fontSize = 14.sp, color = CriticalRed, fontWeight = FontWeight.Bold)
+                        Text(detailData.neededQuantityLabel, fontSize = 14.sp, color = if (detailData.urgency.uppercase() == "CRITICAL") CriticalRed else AccentBlue, fontWeight = FontWeight.Bold)
                     }
                 }
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(detail.description, fontSize = 13.sp, color = LabelGray)
+                Text(detailData.description, fontSize = 13.sp, color = LabelGray)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -200,16 +209,14 @@ fun NeedDetailsScreen(
                 ) {
                     Text("Current Assistance Progress", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Text(
-                        "${detail.quantityOffered}/${detail.quantityTarget}",
+                        "${detailData.quantityOffered}/${detailData.quantityTarget}",
                         fontSize = 13.sp,
                         color = LabelGray
                     )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Simple progress bar: a gray background box, with a green
-                // box on top sized to the percentage completed.
-                val progress = detail.quantityOffered.toFloat() / detail.quantityTarget.toFloat()
+                val progress = if (detailData.quantityTarget == 0) 0f else (detailData.quantityOffered.toFloat() / detailData.quantityTarget.toFloat())
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -225,7 +232,7 @@ fun NeedDetailsScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "${detail.quantityOffered} bottles offered so far",
+                    "${detailData.quantityOffered} items offered so far",
                     fontSize = 12.sp,
                     color = LabelGray
                 )

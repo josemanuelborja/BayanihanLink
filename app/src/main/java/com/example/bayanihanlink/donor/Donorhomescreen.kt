@@ -58,9 +58,8 @@ private val BorderGray = Color(0xFFE3E5EC)
 // The 4 filter chips at the top: All | Critical | Urgent | Normal
 private enum class NeedFilter { ALL, CRITICAL, URGENT, NORMAL }
 
-// One community need card. Hardcoded for now — will come from the backend
-// once the "browse community needs" endpoint exists.
-private data class CommunityNeed(
+// One community need card. Prepared for backend integration.
+data class CommunityNeed(
     val id: String,
     val urgency: String, // "CRITICAL", "URGENT", "NORMAL"
     val title: String,
@@ -127,6 +126,7 @@ private val sampleNeeds = listOf(
 @Composable
 fun DonorHomeScreen(
     userName: String = "Guest",
+    needs: List<CommunityNeed> = emptyList(),
     onViewRequest: (String) -> Unit = {},
     onNavigateMyOffers: () -> Unit = {},
     onNavigateAlerts: () -> Unit = {},
@@ -135,9 +135,8 @@ fun DonorHomeScreen(
     var selectedFilter by remember { mutableStateOf(NeedFilter.ALL) }
     var searchText by remember { mutableStateOf("") }
 
-    // Step 1: keep only needs matching the selected urgency filter.
-    // Step 2: also keep only needs whose title/location contains the search text.
-    val filteredNeeds = sampleNeeds
+    val needsList = if (needs.isEmpty()) sampleNeeds else needs
+    val filteredNeeds = needsList
         .filter { need -> selectedFilter == NeedFilter.ALL || need.urgency == selectedFilter.name }
         .filter { need ->
             searchText.isBlank() ||
@@ -163,6 +162,7 @@ fun DonorHomeScreen(
         ) {
             DonorHeader(
                 userName = userName,
+                needsCount = needsList.size,
                 searchText = searchText,
                 onSearchTextChange = { searchText = it }
             )
@@ -193,6 +193,7 @@ fun DonorHomeScreen(
 @Composable
 private fun DonorHeader(
     userName: String,
+    needsCount: Int = 0,
     searchText: String,
     onSearchTextChange: (String) -> Unit
 ) {
@@ -253,7 +254,7 @@ private fun DonorHeader(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "${sampleNeeds.size} verified requests",
+                text = "$needsCount verified requests",
                 color = Color.White.copy(alpha = 0.85f),
                 fontSize = 13.sp,
                 modifier = Modifier.fillMaxWidth(),

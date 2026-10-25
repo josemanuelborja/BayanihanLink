@@ -239,15 +239,13 @@ fun BayanihanLinkApp() {
                 }
             )
             AppScreen.Home -> HomeScreen(
-                // Uses the real logged-in user's name now. Falls back to
-                // "Maria Santos" only if somehow nobody is logged in yet.
-                userName = loggedInUser?.fullName ?: "Maria Santos",
+                userName = loggedInUser?.fullName ?: "Citizen",
+                activeRequestId = null,
                 onRequestAssistance = {
                     currentScreen = AppScreen.RequestAssistance
                 },
                 onViewRequestDetails = {
-                    selectedRequestId = "#BL-000234"
-                    currentScreen = AppScreen.RequestDetails
+                    currentScreen = AppScreen.MyRequests
                 },
                 onNavigateMyRequest = {
                     currentScreen = AppScreen.MyRequests
@@ -260,6 +258,7 @@ fun BayanihanLinkApp() {
                 }
             )
             AppScreen.MyRequests -> MyRequestsScreen(
+                requests = emptyList(),
                 onViewDetails = { request ->
                     selectedRequestId = request.id
                     currentScreen = AppScreen.RequestDetails
@@ -275,6 +274,13 @@ fun BayanihanLinkApp() {
                 }
             )
             AppScreen.Alerts -> AlertsScreen(
+                notificationsList = emptyList(),
+                onNotificationClick = { notification ->
+                    if (notification.requestId != null) {
+                        selectedRequestId = notification.requestId
+                        currentScreen = AppScreen.RequestDetails
+                    }
+                },
                 onNavigateHome = {
                     currentScreen = homeScreenForCurrentUser()
                 },
@@ -373,6 +379,8 @@ fun BayanihanLinkApp() {
                 }
             )
             AppScreen.RequestAssistance -> RequestAssistanceScreen(
+                userAddress = loggedInUser?.address ?: "",
+                userContact = loggedInUser?.contactNumber ?: "",
                 onExit = {
                     currentScreen = homeScreenForCurrentUser()
                 },
@@ -381,6 +389,9 @@ fun BayanihanLinkApp() {
                 },
                 onBackToHome = {
                     currentScreen = homeScreenForCurrentUser()
+                },
+                onSubmitRequest = { _ ->
+                    // TODO: Submit to backend when endpoints are available
                 }
             )
             AppScreen.RequestDetails -> RequestDetailsScreen(
@@ -395,6 +406,7 @@ fun BayanihanLinkApp() {
             )
             AppScreen.DonorHome -> DonorHomeScreen(
                 userName = loggedInUser?.fullName ?: "Guest",
+                needs = emptyList(),
                 onViewRequest = { needId ->
                     selectedRequestId = needId
                     currentScreen = AppScreen.NeedDetails
@@ -410,6 +422,7 @@ fun BayanihanLinkApp() {
                 }
             )
             AppScreen.MyOffers -> MyOffersScreen(
+                offers = emptyList(),
                 onNavigateNeeds = {
                     currentScreen = AppScreen.DonorHome
                 },
@@ -421,6 +434,13 @@ fun BayanihanLinkApp() {
                 }
             )
             AppScreen.DonorAlerts -> DonorAlertsScreen(
+                notificationsList = emptyList(),
+                onNotificationClick = { notification ->
+                    if (notification.requestId != null) {
+                        selectedRequestId = notification.requestId
+                        currentScreen = AppScreen.NeedDetails
+                    }
+                },
                 onNavigateNeeds = {
                     currentScreen = AppScreen.DonorHome
                 },
@@ -431,7 +451,7 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.DonorProfile
                 }
             )
-            AppScreen.NeedDetails -> NeedDetailsScreen(
+            AppScreen.NeedDetails -> com.example.bayanihanlink.donor.NeedDetailsScreen(
                 needId = selectedRequestId,
                 onBack = {
                     currentScreen = AppScreen.DonorHome
@@ -450,6 +470,9 @@ fun BayanihanLinkApp() {
                 },
                 onBackToNeedsBoard = {
                     currentScreen = AppScreen.DonorHome
+                },
+                onSubmitOffer = { _ ->
+                    // TODO: Submit to backend when endpoints are available
                 }
             )
         }

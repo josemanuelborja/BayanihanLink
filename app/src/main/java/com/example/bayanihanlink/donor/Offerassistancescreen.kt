@@ -61,14 +61,17 @@ private val unitOptions = listOf("bottles", "packs", "kg", "liters", "pieces", "
 fun OfferAssistanceScreen(
     needId: String,
     needTitle: String = "Typhoon Assistance",
+    needItemName: String = "",
+    needQuantity: String = "",
     onBack: () -> Unit = {},
     onViewMyOffers: () -> Unit = {},
-    onBackToNeedsBoard: () -> Unit = {}
+    onBackToNeedsBoard: () -> Unit = {},
+    onSubmitOffer: (Map<String, Any>) -> Unit = {}
 ) {
     val context = LocalContext.current
 
     // Form fields
-    var itemProvided by remember { mutableStateOf("") }
+    var itemProvided by remember { mutableStateOf(needItemName) }
     var quantityAvailable by remember { mutableStateOf("") }
     var unit by remember { mutableStateOf(unitOptions.first()) }
     var description by remember { mutableStateOf("") }
@@ -251,9 +254,17 @@ fun OfferAssistanceScreen(
                     if (errorMessage != null) {
                         Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
                     } else {
-                        // TODO: send this offer to the backend once the
-                        // "donation offers" endpoint exists. For now we just
-                        // move on to the success screen.
+                        // TODO: send this offer to the backend once the "donation offers" endpoint exists.
+                        val payload = mapOf(
+                            "needId" to needId,
+                            "itemProvided" to itemProvided,
+                            "quantityAvailable" to quantityAvailable,
+                            "unit" to unit,
+                            "description" to description,
+                            "preferredContact" to preferredContact,
+                            "additionalNotes" to additionalNotes
+                        )
+                        onSubmitOffer(payload)
                         isSubmitted = true
                     }
                 },
@@ -295,11 +306,7 @@ private fun UnitDropdown(selectedUnit: String, onUnitSelected: (String) -> Unit)
                 .fillMaxWidth()
                 .height(56.dp)
                 .background(Color(0xFFF7F8FA), RoundedCornerShape(14.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = { isExpanded = true }
-                )
+                .clickable { isExpanded = true }
                 .padding(horizontal = 14.dp)
         ) {
             Text(text = selectedUnit, fontSize = 14.sp, color = Color(0xFF1A1A2E))
