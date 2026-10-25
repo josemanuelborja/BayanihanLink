@@ -16,6 +16,10 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,7 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.example.bayanihanlink.ui.theme.BayanihanLinkTheme
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -337,9 +340,9 @@ fun BayanihanLinkApp() {
             AppScreen.Alerts -> AlertsScreen(
                 notificationsList = notifications.map { n ->
                     val icon = when (n.type) {
-                        "REQUEST_VERIFIED", "REQUEST_STATUS_UPDATE", "REQUEST_COMPLETED" -> androidx.compose.material.icons.Icons.Filled.CheckCircle
-                        "OFFER_RECEIVED", "OFFER_ACCEPTED" -> androidx.compose.material.icons.Icons.Filled.Favorite
-                        else -> androidx.compose.material.icons.Icons.Filled.Notifications
+                        "REQUEST_VERIFIED", "REQUEST_STATUS_UPDATE", "REQUEST_COMPLETED" -> Icons.Filled.CheckCircle
+                        "OFFER_RECEIVED", "OFFER_ACCEPTED" -> Icons.Filled.Favorite
+                        else -> Icons.Filled.Notifications
                     }
                     val bg = when (n.type) {
                         "REQUEST_VERIFIED" -> androidx.compose.ui.graphics.Color(0xFF3BB273)
@@ -631,9 +634,9 @@ fun BayanihanLinkApp() {
             AppScreen.DonorAlerts -> DonorAlertsScreen(
                 notificationsList = notifications.map { n ->
                     val icon = when (n.type) {
-                        "OFFER_ACCEPTED" -> androidx.compose.material.icons.Icons.Filled.CheckCircle
-                        "OFFER_RECEIVED" -> androidx.compose.material.icons.Icons.Filled.Favorite
-                        else -> androidx.compose.material.icons.Icons.Filled.Notifications
+                        "OFFER_ACCEPTED" -> Icons.Filled.CheckCircle
+                        "OFFER_RECEIVED" -> Icons.Filled.Favorite
+                        else -> Icons.Filled.Notifications
                     }
                     val bg = when (n.type) {
                         "OFFER_ACCEPTED" -> androidx.compose.ui.graphics.Color(0xFF3BB273)
