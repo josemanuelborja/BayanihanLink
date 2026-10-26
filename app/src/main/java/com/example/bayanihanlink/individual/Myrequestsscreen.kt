@@ -41,12 +41,18 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bayanihanlink.ui.theme.AppColors
 import com.example.bayanihanlink.R
 
 // Prepare for backend integration: use real requests when available
-private val AccentBlue = Color(0xFF2B49CC)
-private val LabelGray = Color(0xFF8A8FA3)
-private val BorderGray = Color(0xFFE3E5EC)
+private val AccentBlue: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
+private val LabelGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.labelGray
+private val BorderGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.borderGray
+private val TextPrimary: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.textPrimary
 
 // The real status of a request. Every request card is assigned exactly ONE of these.
 enum class RequestStatus { PENDING, VERIFIED, ASSISTED, COMPLETED }
@@ -56,7 +62,8 @@ enum class RequestFilter { ALL, PENDING, VERIFIED, ASSISTED, COMPLETED }
 
 // All the info shown on one request card.
 data class RequestItem(
-    val id: String,
+    val id: String,          // formatted ID e.g. #BL-00001
+    val backendId: String,   // raw MongoDB ID
     val title: String,
     val items: String,
     val quantity: String,
@@ -94,19 +101,20 @@ fun MyRequestsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color.White)
+                .background(AppColors.background)
                 .verticalScroll(rememberScrollState())
         ) {
             // Sticky top bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
+                    .background(AppColors.background)
             ) {
                 Text(
                     text = "My Requests",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
                     modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 12.dp)
                 )
             }
@@ -171,7 +179,7 @@ private fun FilterChip(label: String, isSelected: Boolean, onClick: () -> Unit) 
     Box(
         modifier = Modifier
             .background(
-                color = if (isSelected) AccentBlue else Color.White,
+                color = if (isSelected) AccentBlue else AppColors.surface,
                 shape = RoundedCornerShape(20.dp)
             )
             .border(
@@ -216,7 +224,7 @@ private fun EmptyState(selectedFilter: RequestFilter) {
             text = "No requests found",
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF1A1A2E)
+            color = TextPrimary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(text = message, fontSize = 13.sp, color = LabelGray)
@@ -260,7 +268,7 @@ private fun RequestCard(request: RequestItem, onViewDetails: () -> Unit) {
 private fun LabeledRow(label: String, value: String) {
     Row {
         Text(text = label, fontSize = 12.sp, color = LabelGray, modifier = Modifier.weight(0.35f))
-        Text(text = value, fontSize = 13.sp, color = Color(0xFF1A1A2E), modifier = Modifier.weight(0.65f))
+        Text(text = value, fontSize = 13.sp, color = TextPrimary, modifier = Modifier.weight(0.65f))
     }
 }
 
@@ -306,7 +314,7 @@ private fun MyRequestsBottomBar(
     onAlertsClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
-    NavigationBar(containerColor = Color.White) {
+    NavigationBar(containerColor = AppColors.surface) {
         NavigationBarItem(
             selected = false,
             onClick = onHomeClick,

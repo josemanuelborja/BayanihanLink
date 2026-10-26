@@ -22,13 +22,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bed
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Checkroom
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LocalDrink
@@ -52,6 +51,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -59,18 +59,42 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.Dp
+import com.example.bayanihanlink.ui.theme.AppColors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-// Prepare for backend integration: submit to API when available
-private val AccentBlue = Color(0xFF2B49CC)
-private val LabelGray = Color(0xFF8A8FA3)
-private val BorderGray = Color(0xFFE3E5EC)
+// These read the current theme colors, so Dark Mode works on this screen too.
+private val AccentBlue: Color
+    @Composable @ReadOnlyComposable get() = AppColors.accentBlue
+private val LabelGray: Color
+    @Composable @ReadOnlyComposable get() = AppColors.labelGray
+private val BorderGray: Color
+    @Composable @ReadOnlyComposable get() = AppColors.borderGray
 private val DoneGreen = Color(0xFF3BB273)
+private val FieldBackground: Color
+    @Composable @ReadOnlyComposable get() = AppColors.fieldBackground
+private val TextPrimary: Color
+    @Composable @ReadOnlyComposable get() = AppColors.textPrimary
 
 // The 5 disaster choices for Step 1.
 enum class DisasterType(val label: String, val icon: ImageVector) {
@@ -103,12 +127,15 @@ private enum class WizardStep(val stepNumber: Int, val label: String) {
 
 private val unitOptions = listOf("packs", "kg", "liters", "pieces", "sets", "boxes", "bottles")
 
+// The form allows 1 or more affected persons.
+private const val MIN_AFFECTED_PERSONS = 1
+
 @Composable
 fun RequestAssistanceScreen(
     userAddress: String = "",
     userContact: String = "",
     evidenceUri: Uri? = null,
-    onImageSelected: (Uri) -> Unit = {},
+    onUploadImage: () -> Unit = {},
     onImageRemoved: () -> Unit = {},
     onExit: () -> Unit = {},
     onViewMyRequest: () -> Unit = {},
@@ -126,13 +153,19 @@ fun RequestAssistanceScreen(
     var unit by rememberSaveable { mutableStateOf(unitOptions.first()) }
     var description by rememberSaveable { mutableStateOf("") }
     var affectedPersons by rememberSaveable { mutableStateOf("") }
-    var hasEvidence by rememberSaveable { mutableStateOf(evidenceUri != null) }
+
+    // True when a photo has been picked (the parent screen owns the Uri).
+    val hasEvidence = evidenceUri != null
 
     // The Next button on each step is only enabled once the required info is filled in.
     val isDisasterStepValid = selectedDisaster != null
     val isNeedsStepValid = selectedCategories.isNotEmpty()
     val affectedCount = affectedPersons.trim().toIntOrNull()
-    val isDetailsStepValid = itemNeeded.isNotBlank() && quantity.isNotBlank() && affectedPersons.isNotBlank() && affectedCount != null && affectedCount >= 1 && affectedCount <= 13 && hasEvidence
+    val isDetailsStepValid = itemNeeded.isNotBlank() &&
+        quantity.isNotBlank() &&
+        affectedCount != null &&
+        affectedCount >= 1 &&
+        hasEvidence
 
     if (currentStep == WizardStep.SUCCESS) {
         RequestSubmittedScreen(
@@ -145,7 +178,9 @@ fun RequestAssistanceScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppColors.background)
+            .imePadding()
+            .navigationBarsPadding()
     ) {
         // Top bar: back arrow + title.
         Row(
@@ -153,9 +188,9 @@ fun RequestAssistanceScreen(
             modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp)
         ) {
             IconButton(onClick = onExit) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Exit", tint = Color(0xFF1A1A2E))
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Exit", tint = TextPrimary)
             }
-            Text("Request Assistance", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Text("Request Assistance", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         }
 
         WizardStepTracker(currentStep = currentStep)
@@ -192,9 +227,13 @@ fun RequestAssistanceScreen(
                     description = description,
                     onDescriptionChange = { description = it },
                     affectedPersons = affectedPersons,
-                    onAffectedPersonsChange = { affectedPersons = it },
+                    onAffectedPersonsChange = { newValue ->
+                        // Only digits are allowed, and the field accepts at most
+                        // 3 characters so the user can see and correct "14".
+                        affectedPersons = newValue.filter { it.isDigit() }.take(3)
+                    },
                     evidenceUri = evidenceUri,
-                    onImageSelected = onImageSelected,
+                    onUploadImage = onUploadImage,
                     onImageRemoved = onImageRemoved
                 )
                 WizardStep.REVIEW -> ReviewStep(
@@ -236,7 +275,7 @@ fun RequestAssistanceScreen(
                 WizardStep.DISASTER -> isDisasterStepValid
                 WizardStep.NEEDS -> isNeedsStepValid
                 WizardStep.DETAILS -> isDetailsStepValid
-                WizardStep.REVIEW -> true
+                WizardStep.REVIEW -> isDetailsStepValid
                 WizardStep.SUCCESS -> true
             }
 
@@ -354,7 +393,7 @@ private fun OptionCardMulti(
                 shape = RoundedCornerShape(14.dp)
             )
             .background(
-                color = if (isSelected) Color(0xFFEEF0FC) else Color.White,
+                color = if (isSelected) AppColors.accentSoft else AppColors.surface,
                 shape = RoundedCornerShape(14.dp)
             )
             .clickable { onClick() }
@@ -367,7 +406,7 @@ private fun OptionCardMulti(
             modifier = Modifier.size(26.dp)
         )
         Spacer(modifier = Modifier.height(10.dp))
-        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1A1A2E))
+        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
     }
 }
 
@@ -419,7 +458,7 @@ private fun OptionCard(
                 shape = RoundedCornerShape(14.dp)
             )
             .background(
-                color = if (isSelected) Color(0xFFEEF0FC) else Color.White,
+                color = if (isSelected) AppColors.accentSoft else AppColors.surface,
                 shape = RoundedCornerShape(14.dp)
             )
             .clickable { onClick() }
@@ -432,7 +471,7 @@ private fun OptionCard(
             modifier = Modifier.size(26.dp)
         )
         Spacer(modifier = Modifier.height(10.dp))
-        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1A1A2E))
+        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
     }
 }
 
@@ -450,7 +489,7 @@ private fun DetailsStep(
     affectedPersons: String,
     onAffectedPersonsChange: (String) -> Unit,
     evidenceUri: Uri?,
-    onImageSelected: (Uri) -> Unit,
+    onUploadImage: () -> Unit,
     onImageRemoved: () -> Unit
 ) {
     Text("Provide details about your need", fontSize = 17.sp, fontWeight = FontWeight.Bold)
@@ -494,7 +533,7 @@ private fun DetailsStep(
     OutlinedTextField(
         value = description,
         onValueChange = onDescriptionChange,
-        placeholder = { Text("Describe your need...") },
+        placeholder = { Text("Additional context about your need...") },
         shape = RoundedCornerShape(14.dp),
         colors = fieldColors(),
         // Allow the text field to expand vertically as the user types
@@ -508,70 +547,166 @@ private fun DetailsStep(
     Spacer(modifier = Modifier.height(16.dp))
 
     FieldLabel("NUMBER OF AFFECTED PERSONS")
+    val affectedCount = affectedPersons.toIntOrNull()
     OutlinedTextField(
         value = affectedPersons,
         onValueChange = onAffectedPersonsChange,
         singleLine = true,
+        isError = affectedPersons.isNotBlank() && (affectedCount == null || affectedCount < 1),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         shape = RoundedCornerShape(14.dp),
         colors = fieldColors(),
         modifier = Modifier.fillMaxWidth()
     )
-    Text("Must be between 1 and 13.", fontSize = 11.sp, color = LabelGray)
+    if (affectedPersons.isNotBlank() && (affectedCount == null || affectedCount < 1)) {
+        Text(
+            text = "Please enter a valid number of affected persons (at least 1).",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFFD64550)
+        )
+    } else {
+        Text("Enter the number of affected persons.", fontSize = 11.sp, color = LabelGray)
+    }
 
     Spacer(modifier = Modifier.height(16.dp))
 
-    FieldLabel("UPLOAD IMAGE (PROOF OF DISASTER)")
+    FieldLabel("UPLOAD IMAGE")
 
-    // Image preview area
-    if (evidenceUri != null) {
+    if (evidenceUri == null) {
+        // No photo yet: show the dashed "tap to upload" box (same as the design).
+        UploadImageBox(onClick = onUploadImage)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("JPG or PNG, up to 5 MB.", fontSize = 11.sp, color = LabelGray)
+    } else {
+        // A photo was picked: show a preview plus Replace / Remove actions.
+        val evidenceBitmap = rememberEvidenceBitmap(evidenceUri)
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .background(Color(0xFFF7F8FA), RoundedCornerShape(12.dp))
+                .background(AppColors.cardGray, RoundedCornerShape(12.dp))
                 .clip(RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            if (evidenceBitmap != null) {
                 Image(
-                    image = androidx.compose.ui.model.ImageBitmap(imageUri = evidenceUri),
+                    bitmap = evidenceBitmap,
                     contentDescription = "Selected evidence photo",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp)),
-                    contentScale = androidx.compose.foundation.image.ContentScale.Crop
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+            } else {
                 Text(
-                    text = "Image selected",
+                    text = "Preview unavailable",
                     fontSize = 13.sp,
-                    color = Color(0xFF1A1A2E)
+                    color = LabelGray
                 )
             }
         }
+
         Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = onImageRemoved,
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFDECEE)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Remove Image", fontWeight = FontWeight.SemiBold, color = Color(0xFFD64550))
+        Text(
+            text = "Image attached. You can replace or remove it before submitting.",
+            fontSize = 12.sp,
+            color = AppColors.textSecondary
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(
+                onClick = onUploadImage,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Replace Image", fontWeight = FontWeight.SemiBold, color = AccentBlue)
+            }
+            Button(
+                onClick = onImageRemoved,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFDECEE)),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Remove Image", fontWeight = FontWeight.SemiBold, color = Color(0xFFD64550))
+            }
         }
-    } else {
-        Button(
-            onClick = { /* launcher will be called from parent */ },
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Upload Image", fontWeight = FontWeight.SemiBold)
-        }
-        Text("Tap to select a photo from your device.", fontSize = 11.sp, color = LabelGray)
     }
+}
+
+/**
+ * The dashed upload box from the design: a cloud icon, a small "+ Upload"
+ * button, and a hint that tapping anywhere opens the phone's photo picker.
+ */
+@Composable
+private fun UploadImageBox(onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(160.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .dashedBorder(color = BorderGray, cornerRadius = 12.dp)
+            .clickable { onClick() }
+            .padding(16.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.CloudUpload,
+            contentDescription = null,
+            tint = LabelGray,
+            modifier = Modifier.size(36.dp)
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Box(
+            modifier = Modifier
+                .background(AccentBlue, RoundedCornerShape(20.dp))
+                .clickable { onClick() }
+                .padding(horizontal = 14.dp, vertical = 6.dp)
+        ) {
+            Text(
+                "+ Upload",
+                color = if (AppColors.isDark) Color(0xFF101018) else Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Tap to select a photo from your device",
+            fontSize = 11.sp,
+            color = LabelGray
+        )
+    }
+}
+
+/** Draws a dashed rounded border, used by the upload box above. */
+private fun Modifier.dashedBorder(color: Color, cornerRadius: Dp): Modifier = this.drawBehind {
+    drawRoundRect(
+        color = color,
+        cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius.toPx()),
+        style = Stroke(
+            width = 1.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f)
+        )
+    )
+}
+
+// Loads the selected evidence photo off the main thread and turns it into an
+// ImageBitmap that Compose's Image composable can render directly.
+@Composable
+private fun rememberEvidenceBitmap(uri: Uri): ImageBitmap? {
+    val context = LocalContext.current
+    val bitmap by produceState<ImageBitmap?>(initialValue = null, key1 = uri) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream)?.asImageBitmap()
+                }
+            }.getOrNull()
+        }
+    }
+    return bitmap
 }
 
 @Composable
@@ -582,8 +717,8 @@ private fun FieldLabel(text: String) {
 
 @Composable
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    unfocusedContainerColor = Color(0xFFF7F8FA),
-    focusedContainerColor = Color(0xFFF7F8FA),
+    unfocusedContainerColor = FieldBackground,
+    focusedContainerColor = FieldBackground,
     unfocusedBorderColor = Color.Transparent,
     focusedBorderColor = AccentBlue
 )
@@ -600,7 +735,7 @@ private fun UnitDropdown(selectedUnit: String, onUnitSelected: (String) -> Unit)
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .background(Color(0xFFF7F8FA), RoundedCornerShape(14.dp))
+                .background(FieldBackground, RoundedCornerShape(14.dp))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -608,7 +743,7 @@ private fun UnitDropdown(selectedUnit: String, onUnitSelected: (String) -> Unit)
                 )
                 .padding(horizontal = 14.dp)
         ) {
-            Text(text = selectedUnit, fontSize = 14.sp, color = Color(0xFF1A1A2E))
+            Text(text = selectedUnit, fontSize = 14.sp, color = TextPrimary)
             Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = LabelGray)
         }
 
@@ -663,7 +798,7 @@ private fun ReviewStep(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFEEF0FC), RoundedCornerShape(14.dp))
+            .background(AppColors.accentSoft, RoundedCornerShape(14.dp))
             .padding(14.dp)
     ) {
         Icon(Icons.Default.Info, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(18.dp))
@@ -685,7 +820,7 @@ private fun ReviewRow(label: String, value: String, showDivider: Boolean = true)
             .padding(vertical = 10.dp)
     ) {
         Text(text = label, fontSize = 13.sp, color = LabelGray)
-        Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1A1A2E))
+        Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
     }
     if (showDivider) {
         Box(
@@ -714,7 +849,7 @@ private fun WizardStepTracker(currentStep: WizardStep) {
             val circleColor = when {
                 isDone -> DoneGreen
                 isCurrent -> AccentBlue
-                else -> Color(0xFFE3E5EC)
+                else -> BorderGray
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
@@ -724,7 +859,7 @@ private fun WizardStepTracker(currentStep: WizardStep) {
                             modifier = Modifier
                                 .weight(1f)
                                 .height(2.dp)
-                                .background(if (isDone || isCurrent) DoneGreen else Color(0xFFE3E5EC))
+                                .background(if (isDone || isCurrent) DoneGreen else BorderGray)
                         )
                     } else {
                         Spacer(modifier = Modifier.weight(1f))
@@ -745,12 +880,18 @@ private fun WizardStepTracker(currentStep: WizardStep) {
                                 modifier = Modifier.size(16.dp)
                             )
                         } else {
-                            Text(
-                                text = step.stepNumber.toString(),
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = step.stepNumber.toString(),
+                                    color = if (isCurrent && AppColors.isDark) Color(0xFF101018) else Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
                         }
                     }
 
@@ -759,7 +900,7 @@ private fun WizardStepTracker(currentStep: WizardStep) {
                             modifier = Modifier
                                 .weight(1f)
                                 .height(2.dp)
-                                .background(if (isDone) DoneGreen else Color(0xFFE3E5EC))
+                                .background(if (isDone) DoneGreen else BorderGray)
                         )
                     } else {
                         Spacer(modifier = Modifier.weight(1f))
@@ -785,7 +926,7 @@ private fun RequestSubmittedScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF7F8FC))
+            .background(AppColors.background)
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -808,7 +949,7 @@ private fun RequestSubmittedScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Text("Request Submitted!", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text("Request Submitted!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -816,7 +957,7 @@ private fun RequestSubmittedScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White, RoundedCornerShape(14.dp))
+                .background(AppColors.surface, RoundedCornerShape(14.dp))
                 .padding(vertical = 14.dp)
         ) {
             Text("Request ID", fontSize = 12.sp, color = LabelGray)

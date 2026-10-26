@@ -1,58 +1,57 @@
 package com.example.bayanihanlink.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+// The Material color scheme follows the same palette as our own AppColors,
+// so Material components (buttons, text fields, dialogs...) match the design.
+private val LightColorScheme = lightColorScheme(
+    primary = Color(0xFF2B49CC),
+    onPrimary = Color.White,
+    secondary = Color(0xFF2B49CC),
+    onSecondary = Color.White,
+    background = LightAppColors.background,
+    onBackground = LightAppColors.textPrimary,
+    surface = LightAppColors.surface,
+    onSurface = LightAppColors.textPrimary,
+    surfaceVariant = LightAppColors.cardGray,
+    onSurfaceVariant = LightAppColors.textSecondary,
+    outline = LightAppColors.borderGray
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val DarkColorScheme = darkColorScheme(
+    primary = Color(0xFF8EA2FF),
+    onPrimary = Color(0xFF101018),
+    secondary = Color(0xFF8EA2FF),
+    onSecondary = Color(0xFF101018),
+    background = DarkAppColors.background,
+    onBackground = DarkAppColors.textPrimary,
+    surface = DarkAppColors.surface,
+    onSurface = DarkAppColors.textPrimary,
+    surfaceVariant = DarkAppColors.cardGray,
+    onSurfaceVariant = DarkAppColors.textSecondary,
+    outline = DarkAppColors.borderGray
 )
 
 @Composable
 fun BayanihanLinkTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val appColors = if (darkTheme) DarkAppColors else LightAppColors
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    // Provide our own colors to every screen below this point.
+    CompositionLocalProvider(LocalAppColors provides appColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
     }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
 }

@@ -51,16 +51,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bayanihanlink.ui.theme.AppColors
 
 // Prepare for backend integration: replace hardcoded data with real API data when available
-private val AccentBlue = Color(0xFF2B49CC)
+private val AccentBlue: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
 private val AlertOrange = Color(0xFFF5A623)
 private val UrgentPink = Color(0xFFFCE4EC)
 private val UrgentText = Color(0xFFD81B60)
-private val VerifiedBlueBg = Color(0xFFE3E9FF)
-private val VerifiedBlueText = Color(0xFF2B49CC)
-private val CardGray = Color(0xFFF7F8FA)
-private val LabelGray = Color(0xFF8A8FA3)
+private val VerifiedBlueBg: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentSoft
+private val VerifiedBlueText: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
+private val CardGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.cardGray
+private val LabelGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.labelGray
+private val TextPrimary: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.textPrimary
+private val BorderGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.borderGray
 
 // One "step" in the request's progress (Submitted -> Verified -> Offered -> Assisted).
 private data class RequestStep(val label: String, val stepNumber: Int)
@@ -138,7 +148,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding) // leaves room so content isn't hidden behind the bottom bar
                 // White here (not blue)
-                .background(Color.White)
+                .background(AppColors.background)
                 .verticalScroll(rememberScrollState())
         ) {
             HomeHeader(greeting = greeting, userName = userName, alertTitle = alertBannerTitle, alertMessage = alertBannerMessage)
@@ -147,7 +157,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .offset(y = (-20).dp)
-                    .background(Color.White, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                    .background(AppColors.background, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                     .padding(top = 20.dp)
             ) {
                 RequestAssistanceCard(onClick = onRequestAssistance)
@@ -201,7 +211,7 @@ private fun HomeHeader(greeting: String, userName: String, alertTitle: String? =
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                color = AccentBlue,
+                color = AppColors.headerBlue,
                 shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
             )
             .padding(horizontal = 20.dp)
@@ -326,7 +336,7 @@ private fun ActiveRequestSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White, RoundedCornerShape(16.dp))
+                .background(AppColors.surface, RoundedCornerShape(16.dp))
                 .padding(16.dp)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -396,7 +406,7 @@ private fun StepTracker(currentStep: Int) {
             val circleColor = when {
                 isDone -> Color(0xFF3BB273)      // green
                 isCurrent -> AccentBlue           // blue
-                else -> Color(0xFFE3E5EC)         // gray
+                else -> BorderGray              // gray
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
@@ -407,7 +417,7 @@ private fun StepTracker(currentStep: Int) {
                             modifier = Modifier
                                 .weight(1f)
                                 .height(2.dp)
-                                .background(if (isDone || isCurrent) Color(0xFF3BB273) else Color(0xFFE3E5EC))
+                                .background(if (isDone || isCurrent) Color(0xFF3BB273) else BorderGray)
                         )
                     } else {
                         Spacer(modifier = Modifier.weight(1f))
@@ -428,12 +438,18 @@ private fun StepTracker(currentStep: Int) {
                                 modifier = Modifier.size(16.dp)
                             )
                         } else {
-                            Text(
-                                text = step.stepNumber.toString(),
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = step.stepNumber.toString(),
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
                         }
                     }
 
@@ -443,7 +459,7 @@ private fun StepTracker(currentStep: Int) {
                             modifier = Modifier
                                 .weight(1f)
                                 .height(2.dp)
-                                .background(if (isDone) Color(0xFF3BB273) else Color(0xFFE3E5EC))
+                                .background(if (isDone) Color(0xFF3BB273) else BorderGray)
                         )
                     } else {
                         Spacer(modifier = Modifier.weight(1f))
@@ -467,7 +483,7 @@ private fun OverviewSection(total: Int = 0, verified: Int = 0, completed: Int = 
         Text("Overview", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatBox(value = total.toString(), label = "Total Request", valueColor = Color(0xFF1A1A2E), modifier = Modifier.weight(1f))
+            StatBox(value = total.toString(), label = "Total Request", valueColor = TextPrimary, modifier = Modifier.weight(1f))
             StatBox(value = verified.toString(), label = "Verified", valueColor = Color(0xFF3BB273), modifier = Modifier.weight(1f))
             StatBox(value = completed.toString(), label = "Completed", valueColor = AccentBlue, modifier = Modifier.weight(1f))
         }
@@ -514,7 +530,7 @@ private fun RecentUpdatesSection(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 10.dp)
-                        .background(Color.White, RoundedCornerShape(14.dp))
+                        .background(AppColors.surface, RoundedCornerShape(14.dp))
                         .padding(12.dp)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -538,7 +554,7 @@ private fun RecentUpdatesSection(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text(text = update.message, fontSize = 13.sp, color = Color(0xFF1A1A2E))
+                        Text(text = update.message, fontSize = 13.sp, color = TextPrimary)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(text = update.timeAgo, fontSize = 11.sp, color = LabelGray)
                     }
@@ -555,7 +571,7 @@ private fun HomeBottomBar(
     onAlertsClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
-    NavigationBar(containerColor = Color.White) {
+    NavigationBar(containerColor = AppColors.surface) {
         NavigationBarItem(
             selected = true,
             onClick = { /* already on this screen */ },

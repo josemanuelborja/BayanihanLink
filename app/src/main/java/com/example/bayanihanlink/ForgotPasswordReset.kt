@@ -45,10 +45,15 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import com.example.bayanihanlink.ui.theme.AppColors
 import kotlinx.coroutines.launch
 
-private val ResetBlue = Color(0xFF2B49CC)
-private val ResetDarkText = Color(0xFF1A1A2E)
+private val ResetBlue: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
+private val ResetDarkText: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.textPrimary
 
 @Composable
 fun ForgotPasswordResetScreen(
@@ -78,7 +83,9 @@ fun ForgotPasswordResetScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppColors.background)
+            .imePadding()
+            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         ForgotTopBar(title = "Reset your password", onBack = onBack)
@@ -187,7 +194,7 @@ fun ForgotPasswordResetScreen(
                     Text("Login", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
             },
-            containerColor = Color.White,
+            containerColor = AppColors.surface,
             shape = RoundedCornerShape(16.dp)
         )
     }

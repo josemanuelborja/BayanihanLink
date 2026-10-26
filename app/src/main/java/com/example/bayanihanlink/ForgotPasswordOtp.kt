@@ -36,11 +36,17 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import com.example.bayanihanlink.ui.theme.AppColors
 import kotlinx.coroutines.launch
 
-private val CodeBoxBackground = Color(0xFFF3F4F8)
-private val CodeBoxBorder = Color(0xFFE3E5EC)
-private val CodeDarkText = Color(0xFF1A1A2E)
+private val CodeBoxBackground: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.fieldBackground
+private val CodeBoxBorder: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.borderGray
+private val CodeDarkText: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.textPrimary
 
 @Composable
 fun ForgotPasswordOtpScreen(
@@ -64,7 +70,9 @@ fun ForgotPasswordOtpScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppColors.background)
+            .imePadding()
+            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         ForgotTopBar(title = "Forgot Password", onBack = onBack)

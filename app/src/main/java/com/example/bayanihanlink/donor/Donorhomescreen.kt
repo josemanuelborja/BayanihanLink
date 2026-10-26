@@ -50,15 +50,20 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.ReadOnlyComposable
+import com.example.bayanihanlink.ui.components.RemoteImage
+import com.example.bayanihanlink.ui.theme.AppColors
 
-private val AccentBlue = Color(0xFF2B49CC)
-private val LabelGray = Color(0xFF8A8FA3)
-private val BorderGray = Color(0xFFE3E5EC)
+private val AccentBlue: Color
+    @Composable @ReadOnlyComposable get() = AppColors.accentBlue
+private val LabelGray: Color
+    @Composable @ReadOnlyComposable get() = AppColors.labelGray
+private val BorderGray: Color
+    @Composable @ReadOnlyComposable get() = AppColors.borderGray
 
 // The 4 filter chips at the top: All | Critical | Urgent | Normal
 private enum class NeedFilter { ALL, CRITICAL, URGENT, NORMAL }
@@ -74,59 +79,6 @@ data class CommunityNeed(
     val location: String, 
     val date: String, 
     val evidenceImageUrl: String = "" 
-)
-
-private val sampleNeeds = listOf(
-    CommunityNeed(
-        id = "#BL-000234",
-        urgency = "CRITICAL",
-        title = "Typhoon Assistance",
-        itemName = "Drinking Water",
-        neededQuantity = "Needed: 100 bottles",
-        description = "50 families in evacuation center urgently need clean drinking water.",
-        location = "Cagayan de Oro",
-        date = "Sep 15, 2026"
-    ),
-    CommunityNeed(
-        id = "#BL-000241",
-        urgency = "URGENT",
-        title = "Flood Assistance",
-        itemName = "Rice (5kg sacks)",
-        neededQuantity = "Needed: 30 sacks",
-        description = "Families displaced by flooding need food supply for at least 1 week.",
-        location = "Iligan City, Lanao",
-        date = "Sep 15, 2026"
-    ),
-    CommunityNeed(
-        id = "#BL-000256",
-        urgency = "URGENT",
-        title = "Earthquake Assistance",
-        itemName = "Blankets & Clothing",
-        neededQuantity = "Needed: 50 sets",
-        description = "Families living outside need warmth and clothing.",
-        location = "Surigao del Norte",
-        date = "Sep 14, 2026"
-    ),
-    CommunityNeed(
-        id = "#BL-000261",
-        urgency = "NORMAL",
-        title = "Fire Assistance",
-        itemName = "Hygiene Supplies",
-        neededQuantity = "Needed: 40 packs",
-        description = "Fire victims need basic hygiene kits.",
-        location = "Davao City",
-        date = "Sep 13, 2026"
-    ),
-    CommunityNeed(
-        id = "#BL-000270",
-        urgency = "NORMAL",
-        title = "Typhoon Assistance",
-        itemName = "Medicine (First Aid)",
-        neededQuantity = "Needed: 20 kits",
-        description = "Medical supplies needed for minor injuries and illnesses.",
-        location = "Butuan City",
-        date = "Sep 12, 2026"
-    )
 )
 
 // Returns "Good morning", "Good afternoon", or "Good evening" based on the current time.
@@ -161,7 +113,7 @@ fun DonorHomeScreen(
         }
     }
 
-    val needsList = if (needs.isEmpty()) sampleNeeds else needs
+    val needsList = needs
     val filteredNeeds = needsList
         .filter { need -> selectedFilter == NeedFilter.ALL || need.urgency == selectedFilter.name }
         .filter { need ->
@@ -183,7 +135,7 @@ fun DonorHomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color.White)
+                .background(AppColors.background)
                 .verticalScroll(rememberScrollState())
         ) {
             DonorHeader(
@@ -204,6 +156,34 @@ fun DonorHomeScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                if (filteredNeeds.isEmpty()) {
+                    // Nothing to show: either there are no requests yet, or the
+                    // search/filter matched nothing.
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 48.dp, bottom = 24.dp)
+                    ) {
+                        Text(
+                            text = if (needsList.isEmpty()) "No community needs yet." else "No needs match your search.",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AppColors.textPrimary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (needsList.isEmpty()) {
+                                "Requests from citizens will appear here once they are verified."
+                            } else {
+                                "Try a different keyword or filter."
+                            },
+                            fontSize = 13.sp,
+                            color = LabelGray
+                        )
+                    }
+                }
+
                 filteredNeeds.forEach { need ->
                     CommunityNeedCard(
                         need = need,
@@ -237,7 +217,7 @@ private fun DonorHeader(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(AccentBlue, RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
+                .background(AppColors.headerBlue, RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                 .padding(horizontal = 20.dp)
                 .padding(top = 20.dp, bottom = 44.dp)
         ) {
@@ -301,8 +281,8 @@ private fun DonorHeader(
             keyboardOptions = KeyboardOptions.Default,
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = Color.White,
-                focusedContainerColor = Color.White,
+                unfocusedContainerColor = AppColors.surface,
+                focusedContainerColor = AppColors.surface,
                 unfocusedBorderColor = BorderGray,
                 focusedBorderColor = AccentBlue
             ),
@@ -334,7 +314,7 @@ private fun FilterChipsRow(selectedFilter: NeedFilter, onFilterSelected: (NeedFi
             Box(
                 modifier = Modifier
                     .background(
-                        color = if (isSelected) chipColor else Color.White,
+                        color = if (isSelected) chipColor else AppColors.surface,
                         shape = RoundedCornerShape(20.dp)
                     )
                     .clickable(
@@ -361,36 +341,26 @@ private fun CommunityNeedCard(need: CommunityNeed, onViewRequest: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            // The WHOLE card is clickable (not just the button below), with the
+            // normal ripple touch feedback clipped to the card's shape.
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onViewRequest() }
             // A border is needed here — without it, a white card on a white
             // page background is invisible (no edges to see where it starts/ends).
             .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
-            .background(Color.White, RoundedCornerShape(16.dp))
+            .background(AppColors.surface, RoundedCornerShape(16.dp))
     ) {
-        // Disaster image at the top of the card (if available)
+        // Disaster image at the top of the card (shows "No image attached" when
+        // this particular request has no photo).
         if (need.evidenceImageUrl.isNotBlank()) {
-            Box(
+            RemoteImage(
+                imageUrl = need.evidenceImageUrl,
+                contentDescription = "Evidence photo for ${need.title}",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .background(Color(0xFFF7F8FA), RoundedCornerShape(12.dp))
-                    .clip(RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "📷",
-                        fontSize = 48.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Evidence photo attached",
-                        fontSize = 13.sp,
-                        color = Color(0xFF1A1A2E)
-                    )
-                }
-            }
+                    .aspectRatio(16f / 9f),
+                emptyText = "No image attached"
+            )
             Spacer(modifier = Modifier.height(12.dp))
         }
 
@@ -402,14 +372,14 @@ private fun CommunityNeedCard(need: CommunityNeed, onViewRequest: () -> Unit) {
             }
 
             Spacer(modifier = Modifier.height(6.dp))
-            Text(text = need.title, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(text = need.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AppColors.textPrimary)
 
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = need.itemName, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(text = need.itemName, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = AppColors.textPrimary)
                 Text(text = need.neededQuantity, fontSize = 13.sp, color = AccentBlue, fontWeight = FontWeight.SemiBold)
             }
 
@@ -435,6 +405,9 @@ private fun CommunityNeedCard(need: CommunityNeed, onViewRequest: () -> Unit) {
                     Text(text = need.date, fontSize = 12.sp, color = LabelGray)
                 }
 
+                // This button opens the same screen as tapping the card.
+                // The button handles its own tap, so the card does not also
+                // open it twice.
                 Button(
                     onClick = onViewRequest,
                     shape = RoundedCornerShape(10.dp),
@@ -471,7 +444,7 @@ private fun DonorBottomBar(
     onAlertsClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
-    NavigationBar(containerColor = Color.White) {
+    NavigationBar(containerColor = AppColors.surface) {
         NavigationBarItem(
             selected = true,
             onClick = { /* already on this screen */ },

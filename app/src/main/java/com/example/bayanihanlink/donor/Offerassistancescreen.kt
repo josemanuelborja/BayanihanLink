@@ -1,6 +1,8 @@
 package com.example.bayanihanlink.donor
 
 import android.widget.Toast
+import com.example.bayanihanlink.isValidPhilippinePhone
+import com.example.bayanihanlink.formatPhilippinePhone
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -12,6 +14,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,9 +54,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bayanihanlink.ui.theme.AppColors
 
-private val AccentBlue = Color(0xFF2B49CC)
-private val LabelGray = Color(0xFF8A8FA3)
+private val AccentBlue: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
+private val LabelGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.labelGray
+private val TextPrimary: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.textPrimary
+private val FieldBackground: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.fieldBackground
 private val DoneGreen = Color(0xFF3BB273)
 
 private val unitOptions = listOf("bottles", "packs", "kg", "liters", "pieces", "sets", "boxes")
@@ -100,7 +111,9 @@ fun OfferAssistanceScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppColors.background)
+            .imePadding()
+            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         // Top bar
@@ -109,7 +122,7 @@ fun OfferAssistanceScreen(
             modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp)
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Go back", tint = Color(0xFF1A1A2E))
+                Icon(Icons.Default.ArrowBack, contentDescription = "Go back", tint = TextPrimary)
             }
             Text("Offer Assistance", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         }
@@ -120,14 +133,14 @@ fun OfferAssistanceScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFFE3F7EA), RoundedCornerShape(14.dp))
+                    .background(AppColors.cardGray, RoundedCornerShape(14.dp))
                     .padding(14.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(AccentBlue),
+                        .background(AppColors.headerBlue),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.Description, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
@@ -145,7 +158,7 @@ fun OfferAssistanceScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFFFFF8E6), RoundedCornerShape(14.dp))
+                    .background(AppColors.cardGray, RoundedCornerShape(14.dp))
                     .padding(14.dp)
             ) {
                 Icon(Icons.Default.Inventory2, contentDescription = null, tint = Color(0xFFB4690E), modifier = Modifier.size(18.dp))
@@ -250,6 +263,8 @@ fun OfferAssistanceScreen(
                             "Quantity must be more than 0."
                         preferredContact.trim().isEmpty() ->
                             "Please enter a preferred contact number."
+                        !isValidPhilippinePhone(preferredContact) ->
+                            "Please enter a valid Philippine mobile number (e.g. +639123456789 or 09123456789)."
                         else -> null
                     }
 
@@ -263,7 +278,7 @@ fun OfferAssistanceScreen(
                             "quantityAvailable" to quantityAvailable,
                             "unit" to unit,
                             "description" to description,
-                            "preferredContact" to preferredContact,
+                            "preferredContact" to formatPhilippinePhone(preferredContact),
                             "additionalNotes" to additionalNotes
                         )
                         onSubmitOffer(payload)
@@ -290,8 +305,8 @@ private fun FieldLabel(text: String) {
 
 @Composable
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    unfocusedContainerColor = Color(0xFFF7F8FA),
-    focusedContainerColor = Color(0xFFF7F8FA),
+    unfocusedContainerColor = FieldBackground,
+    focusedContainerColor = FieldBackground,
     unfocusedBorderColor = Color.Transparent,
     focusedBorderColor = AccentBlue
 )
@@ -307,11 +322,11 @@ private fun UnitDropdown(selectedUnit: String, onUnitSelected: (String) -> Unit)
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .background(Color(0xFFF7F8FA), RoundedCornerShape(14.dp))
+                .background(FieldBackground, RoundedCornerShape(14.dp))
                 .clickable { isExpanded = true }
                 .padding(horizontal = 14.dp)
         ) {
-            Text(text = selectedUnit, fontSize = 14.sp, color = Color(0xFF1A1A2E))
+            Text(text = selectedUnit, fontSize = 14.sp, color = TextPrimary)
             Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = LabelGray)
         }
 
@@ -342,7 +357,7 @@ private fun OfferSubmittedScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF7F8FC))
+            .background(AppColors.background)
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -376,7 +391,7 @@ private fun OfferSubmittedScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White, RoundedCornerShape(14.dp))
+                .background(AppColors.surface, RoundedCornerShape(14.dp))
                 .padding(16.dp)
         ) {
             SummaryRow("Donation Offer ID", offerId)
@@ -418,6 +433,6 @@ private fun SummaryRow(label: String, value: String, showDivider: Boolean = true
             .padding(vertical = 8.dp)
     ) {
         Text(label, fontSize = 13.sp, color = LabelGray)
-        Text(value, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1A1A2E))
+        Text(value, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
     }
 }

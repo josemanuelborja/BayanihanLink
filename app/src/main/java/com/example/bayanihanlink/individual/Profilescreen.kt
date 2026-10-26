@@ -52,17 +52,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.MaterialTheme
+import com.example.bayanihanlink.ui.theme.AppColors
 
 // This is the Profile screen for AFFECTED INDIVIDUAL accounts.
 // Donors/Volunteers use the separate DonorProfileScreen.kt instead
 // (same look overall, but different bottom tabs and menu items).
 
 // The colors used by the profile screens.
-private val AccentBlue = Color(0xFF2B49CC)
-private val CardBg = Color(0xFFF8F9FC)
-private val LabelGray = Color(0xFF8A8FA3)
-private val DarkText = Color(0xFF1A1A2E)
-private val BorderGray = Color(0xFFE9EBF2)
+private val AccentBlue: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
+private val CardBg: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.cardGray
+private val LabelGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.labelGray
+private val DarkText: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.textPrimary
+private val BorderGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.borderGray
 private val DangerRed = Color(0xFFD64550)
 private val DangerBg = Color(0xFFFDECEE)
 private val DangerBorder = Color(0xFFF6C9CE)
@@ -114,7 +120,8 @@ fun ProfileScreen(
                 onEditProfile = onEditProfile,
                 onChangePassword = onChangePassword,
                 onMyRequests = onMyRequests,
-                onAboutBayanihanLink = onAboutBayanihanLink
+                onAboutBayanihanLink = onAboutBayanihanLink,
+                onToggleDarkMode = onToggleDarkMode
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -150,7 +157,7 @@ fun ProfileHeader(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
-            .background(AccentBlue)
+            .background(AppColors.headerBlue)
             .padding(top = 28.dp, bottom = 56.dp)
     ) {
         Box {
@@ -310,7 +317,7 @@ private fun MenuCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .background(Color.White, RoundedCornerShape(14.dp))
+            .background(AppColors.surface, RoundedCornerShape(14.dp))
             .border(1.dp, BorderGray, RoundedCornerShape(14.dp))
     ) {
         MenuRow(icon = Icons.Default.Edit, label = "Edit Profile", onClick = onEditProfile)
@@ -380,7 +387,7 @@ private fun ProfileBottomBar(
     onMyRequestClick: () -> Unit,
     onAlertsClick: () -> Unit
 ) {
-    NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
+    NavigationBar(containerColor = AppColors.surface, tonalElevation = 0.dp) {
         NavigationBarItem(
             selected = false,
             onClick = onHomeClick,

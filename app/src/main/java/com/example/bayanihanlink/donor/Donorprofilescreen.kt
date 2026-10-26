@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -51,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bayanihanlink.ui.theme.AppColors
 
 // This is the Profile screen for DONOR/VOLUNTEER accounts.
 // Affected Individuals use the separate ProfileScreen.kt instead.
@@ -58,11 +60,16 @@ import androidx.compose.ui.unit.sp
 // so it lives in the root package (see UserProfile.kt) and is imported above.
 
 // The colors used by the profile screens (same values as Profilescreen.kt).
-private val AccentBlue = Color(0xFF2B49CC)
-private val CardBg = Color(0xFFF8F9FC)
-private val LabelGray = Color(0xFF8A8FA3)
-private val DarkText = Color(0xFF1A1A2E)
-private val BorderGray = Color(0xFFE9EBF2)
+private val AccentBlue: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
+private val CardBg: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.cardGray
+private val LabelGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.labelGray
+private val DarkText: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.textPrimary
+private val BorderGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.borderGray
 private val DangerRed = Color(0xFFD64550)
 private val DangerBg = Color(0xFFFDECEE)
 private val DangerBorder = Color(0xFFF6C9CE)
@@ -119,7 +126,8 @@ fun DonorProfileScreen(
             DonorMenuCard(
                 onEditProfile = onEditProfile,
                 onChangePassword = onChangePassword,
-                onAboutBayanihanLink = onAboutBayanihanLink
+                onAboutBayanihanLink = onAboutBayanihanLink,
+                onToggleDarkMode = onToggleDarkMode
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -247,7 +255,7 @@ private fun DonorMenuCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .background(Color.White, RoundedCornerShape(14.dp))
+            .background(AppColors.surface, RoundedCornerShape(14.dp))
             .border(1.dp, BorderGray, RoundedCornerShape(14.dp))
     ) {
         DonorMenuRow(icon = Icons.Default.Edit, label = "Edit Profile", onClick = onEditProfile)
@@ -315,7 +323,7 @@ private fun DonorProfileBottomBar(
     onMyOffersClick: () -> Unit,
     onAlertsClick: () -> Unit
 ) {
-    NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
+    NavigationBar(containerColor = AppColors.surface, tonalElevation = 0.dp) {
         NavigationBarItem(
             selected = false,
             onClick = onNeedsClick,

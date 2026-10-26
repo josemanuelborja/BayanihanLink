@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -38,13 +40,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bayanihanlink.ui.theme.AppColors
 import kotlinx.coroutines.launch
 
-private val AccentBlue = Color(0xFF2B49CC)
-private val LabelGray = Color(0xFF8A8FA3)
-private val DarkText = Color(0xFF1A1A2E)
-private val FieldBg = Color(0xFFF1F3F8)
-private val NoteBg = Color(0xFFEFF1FF)
+private val AccentBlue: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
+private val LabelGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.labelGray
+private val DarkText: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.textPrimary
+private val FieldBg: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.fieldBackground
+private val NoteBg: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentSoft
 
 @Composable
 fun ChangePasswordScreen(
@@ -62,7 +70,9 @@ fun ChangePasswordScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppColors.background)
+            .imePadding()
+            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
     ) {

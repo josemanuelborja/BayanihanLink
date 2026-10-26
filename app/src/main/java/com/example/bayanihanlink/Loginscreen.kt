@@ -14,9 +14,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Fingerprint
@@ -49,9 +53,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bayanihanlink.ui.theme.AppColors
 
 private val LoginBlue = Color(0xFF2B49CC)
-private val FieldBackground = Color(0xFFF3F4F8)
 
 @Composable
 fun LoginScreen(
@@ -68,7 +72,9 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppColors.background)
+            .imePadding()
+            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         // Curved blue header
@@ -76,7 +82,7 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    color = LoginBlue,
+                    color = AppColors.headerBlue,
                     shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
                 )
                 .padding(top = 56.dp, bottom = 40.dp),
@@ -115,15 +121,15 @@ fun LoginScreen(
         // Form section
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .padding(top = 28.dp)
+                .padding(top = 28.dp, bottom = 24.dp)
         ) {
             Text(
                 text = "Sign In",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1A1A2E)
+                color = AppColors.textPrimary
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -132,7 +138,7 @@ fun LoginScreen(
                 text = "EMAIL ADDRESS",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF8A8FA3)
+                color = AppColors.labelGray
             )
             Spacer(modifier = Modifier.height(6.dp))
             OutlinedTextField(
@@ -146,8 +152,8 @@ fun LoginScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 shape = RoundedCornerShape(14.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = FieldBackground,
-                    focusedContainerColor = FieldBackground,
+                    unfocusedContainerColor = AppColors.fieldBackground,
+                    focusedContainerColor = AppColors.fieldBackground,
                     unfocusedBorderColor = Color.Transparent,
                     focusedBorderColor = LoginBlue
                 ),
@@ -160,7 +166,7 @@ fun LoginScreen(
                 text = "PASSWORD",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF8A8FA3)
+                color = AppColors.labelGray
             )
             Spacer(modifier = Modifier.height(6.dp))
             OutlinedTextField(
@@ -184,8 +190,8 @@ fun LoginScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 shape = RoundedCornerShape(14.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = FieldBackground,
-                    focusedContainerColor = FieldBackground,
+                    unfocusedContainerColor = AppColors.fieldBackground,
+                    focusedContainerColor = AppColors.fieldBackground,
                     unfocusedBorderColor = Color.Transparent,
                     focusedBorderColor = LoginBlue
                 ),
@@ -252,14 +258,14 @@ fun LoginScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Divider(modifier = Modifier.weight(1f), color = Color(0xFFE3E5EC))
+                Divider(modifier = Modifier.weight(1f), color = AppColors.borderGray)
                 Text(
                     text = "or",
-                    color = Color(0xFF8A8FA3),
+                    color = AppColors.labelGray,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
-                Divider(modifier = Modifier.weight(1f), color = Color(0xFFE3E5EC))
+                Divider(modifier = Modifier.weight(1f), color = AppColors.borderGray)
             }
 
             Spacer(modifier = Modifier.height(18.dp))
@@ -284,7 +290,7 @@ fun LoginScreen(
             Text(
                 text = "Administrator Login",
                 fontSize = 13.sp,
-                color = Color(0xFF5A5F73),
+                color = AppColors.textSecondary,
                 textDecoration = TextDecoration.Underline,
                 textAlign = TextAlign.Center,
                 modifier = Modifier

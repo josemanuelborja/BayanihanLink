@@ -5,7 +5,11 @@ import com.example.bayanihanlink.individual.*
 import com.example.bayanihanlink.donor.*
 import com.example.bayanihanlink.individual.UpdateItem
 
+import android.content.Context
+import android.app.Activity
 import android.net.Uri
+import androidx.core.view.WindowCompat
+import androidx.compose.runtime.SideEffect
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.ui.graphics.Color
 import android.os.Bundle
@@ -84,8 +88,44 @@ private enum class AppScreen {
 
 @Composable
 fun BayanihanLinkApp() {
-    var darkMode by remember { mutableStateOf(false) }
-    var currentScreen by remember { mutableStateOf(AppScreen.Splash) }
+    val context = LocalContext.current
+
+    // Dark Mode is remembered in SharedPreferences, so the choice survives
+    // closing and reopening the app.
+    val preferences = remember {
+        context.getSharedPreferences("bayanihan_prefs", Context.MODE_PRIVATE)
+    }
+    var darkMode by remember {
+        mutableStateOf(preferences.getBoolean("dark_mode", false))
+    }
+    fun setDarkMode(enabled: Boolean) {
+        darkMode = enabled
+        preferences.edit().putBoolean("dark_mode", enabled).apply()
+    }
+
+    // Keep the phone's status bar / navigation bar icons readable: dark icons
+    // on a light background, light icons on a dark background.
+    SideEffect {
+        val window = (context as? Activity)?.window ?: return@SideEffect
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !darkMode
+            isAppearanceLightNavigationBars = !darkMode
+        }
+    }
+
+    // The account that's currently logged in (filled in after a successful login, restored from SharedPreferences)
+    var loggedInUser by remember { mutableStateOf<UserResponse?>(AppSessionManager.loadUserSession(context)) }
+
+    // Initial screen: if a valid session exists in SharedPreferences, skip splash/onboarding/login and go straight to Home!
+    var currentScreen by remember {
+        mutableStateOf(
+            if (AppSessionManager.loadUserSession(context) != null) {
+                if (AppSessionManager.loadUserSession(context)?.accountType == "DONOR_VOLUNTEER") AppScreen.DonorHome else AppScreen.Home
+            } else {
+                AppScreen.Splash
+            }
+        )
+    }
 
     var selectedRequestId by remember { mutableStateOf("#BL-000234") }
 
@@ -96,21 +136,121 @@ fun BayanihanLinkApp() {
                 .statusBarsPadding()
         ) {
 
-    // The account that's currently logged in (filled in after a successful login)
-    var loggedInUser by remember { mutableStateOf<UserResponse?>(null) }
-
     // The Forgot Password flow is three screens in a row
     var forgotEmail by remember { mutableStateOf("") }
     var forgotCode by remember { mutableStateOf("") }
 
     val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     val userRequests = remember { mutableStateListOf<RequestResponse>() }
     val allNeeds = remember { mutableStateListOf<RequestResponse>() }
     val userOffers = remember { mutableStateListOf<OfferResponse>() }
     val notifications = remember { mutableStateListOf<NotificationResponse>() }
     val recentUpdates = remember { mutableStateListOf<UpdateItem>() }
+
+    // Auto-load requests/needs/notifications on first composition if user session is restored
+    LaunchedEffect(Unit) {
+        val user = loggedInUser
+        if (user != null) {
+            coroutineScope.launch {
+                try {
+                    if (user.accountType == "DONOR_VOLUNTEER") {
+                        val needs = RetrofitClient.api.getAllRequests()
+                        allNeeds.clear()
+                        allNeeds.addAll(needs)
+                        val offers = RetrofitClient.api.getOffersByUser(user.id, user.id, if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}", user.authToken)
+                        userOffers.clear()
+                        userOffers.addAll(offers)
+                    } else {
+                        val reqs = RetrofitClient.api.getUserRequests(user.id, user.id, if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}", user.authToken)
+                        userRequests.clear()
+                        userRequests.addAll(reqs)
+                        
+                        // Populate recent updates from user requests
+                        recentUpdates.clear()
+                        reqs.take(5).forEach { r ->
+                            val reqIdFormatted = AppSessionManager.getFormattedRequestId(context, r.id, r.dateSubmitted)
+                            val statusText = when (r.status) {
+                                "VERIFIED" -> "Your request $reqIdFormatted has been verified by the administrator."
+                                "ASSISTED", "COMPLETED" -> "Your request $reqIdFormatted has been completed."
+                                else -> "Your request $reqIdFormatted has been submitted."
+                            }
+                            val bg = when (r.status) {
+                                "VERIFIED", "ASSISTED", "COMPLETED" -> Color(0xFF3BB273)
+                                else -> Color(0xFF2B49CC)
+                            }
+                            recentUpdates.add(UpdateItem(
+                                icon = Icons.Default.Description,
+                                iconBackground = bg,
+                                message = statusText,
+                                timeAgo = r.dateSubmitted?.take(10) ?: "Recent"
+                            ))
+                        }
+                    }
+                    val notifs = RetrofitClient.api.getNotifications(user.id, user.id, if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}", user.authToken)
+                    notifications.clear()
+                    notifications.addAll(notifs)
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
+    // Used by the Alerts screens to show loading / error states.
+    var notificationsLoading by remember { mutableStateOf(false) }
+    var notificationsError by remember { mutableStateOf<String?>(null) }
+
+    // (Re)loads the signed-in user's notifications from the backend.
+    fun loadNotifications() {
+        val user = loggedInUser ?: return
+        notificationsLoading = true
+        notificationsError = null
+        coroutineScope.launch {
+            try {
+                val notifs = RetrofitClient.api.getNotifications(
+                    user.id,
+                    user.id,
+                    if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}",
+                    user.authToken
+                )
+                notifications.clear()
+                notifications.addAll(notifs)
+            } catch (error: Exception) {
+                notificationsError = readableErrorMessage(error)
+            } finally {
+                notificationsLoading = false
+            }
+        }
+    }
+
+    // Refresh notifications every time the user opens an Alerts screen, so
+    // they always see real, up-to-date events from the backend.
+    LaunchedEffect(currentScreen) {
+        if (currentScreen == AppScreen.Alerts || currentScreen == AppScreen.DonorAlerts) {
+            loadNotifications()
+        }
+    }
+
+    // Marks ONE notification as read (called when the user taps an alert).
+    fun markNotificationAsRead(notificationId: String?) {
+        val user = loggedInUser ?: return
+        if (notificationId.isNullOrBlank()) return
+        val index = notifications.indexOfFirst { (it._id ?: it.id) == notificationId }
+        if (index >= 0 && notifications[index].isRead == true) return
+        coroutineScope.launch {
+            try {
+                RetrofitClient.api.markNotificationRead(
+                    notificationId,
+                    user.id,
+                    if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}",
+                    user.authToken
+                )
+                if (index >= 0) {
+                    notifications[index] = notifications[index].copy(isRead = true)
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     // Whenever some screen wants to go "back to Home", this decides WHICH
     // home screen that means — Affected Individuals and Donors/Volunteers
@@ -158,6 +298,7 @@ fun BayanihanLinkApp() {
                         try {
                             val user = RetrofitClient.api.login(LoginRequest(email, password))
                             loggedInUser = user
+                            AppSessionManager.saveUserSession(context, user)
                             currentScreen = if (user.accountType == "DONOR_VOLUNTEER") {
                                 AppScreen.DonorHome
                             } else {
@@ -298,7 +439,7 @@ fun BayanihanLinkApp() {
                 val mapStatus = { s: String? -> when (s) { "PENDING" -> 1; "VERIFIED" -> 2; "ASSISTED" -> 3; "COMPLETED" -> 4; else -> 1 } }
                 HomeScreen(
                     userName = loggedInUser?.fullName ?: "Citizen",
-                    activeRequestId = active?.id,
+                    activeRequestId = if (active != null) AppSessionManager.getFormattedRequestId(context, active.id, active.dateSubmitted) else null,
                     activeRequestTitle = active?.disasterType ?: "",
                     activeRequestItems = active?.itemNeeded ?: "",
                     activeRequestUrgency = active?.urgency ?: "",
@@ -315,9 +456,10 @@ fun BayanihanLinkApp() {
                         if (active != null) selectedRequestId = active.id
                         currentScreen = AppScreen.RequestDetails
                     },
-                    onUpdateClick = { requestId ->
-                        selectedRequestId = requestId
-                        currentScreen = AppScreen.RequestDetails
+                    onUpdateClick = { _ ->
+                        // A recent update has no request id of its own, so open
+                        // the list where the user can pick the right request.
+                        currentScreen = AppScreen.MyRequests
                     },
                     onNavigateMyRequest = {
                         currentScreen = AppScreen.MyRequests
@@ -333,7 +475,8 @@ fun BayanihanLinkApp() {
             AppScreen.MyRequests -> MyRequestsScreen(
                 requests = userRequests.map { r ->
                     com.example.bayanihanlink.individual.RequestItem(
-                        id = r.id,
+                        id = AppSessionManager.getFormattedRequestId(context, r.id, r.dateSubmitted),
+                        backendId = r.id,
                         title = r.disasterType ?: (r.categories?.firstOrNull() ?: ""),
                         items = r.itemNeeded ?: "",
                         quantity = "${r.quantity ?: ""} ${r.unit ?: ""}".trim(),
@@ -349,7 +492,7 @@ fun BayanihanLinkApp() {
                     )
                 },
                 onViewDetails = { request ->
-                    selectedRequestId = request.id
+                    selectedRequestId = request.backendId
                     currentScreen = AppScreen.RequestDetails
                 },
                 onNavigateHome = {
@@ -383,25 +526,37 @@ fun BayanihanLinkApp() {
                         timeAgo = n.createdAt?.take(10) ?: "",
                         isUnread = !(n.isRead ?: false),
                         requestId = n.requestId ?: n.targetId,
-                        type = n.type
+                        type = n.type,
+                        notificationId = n._id ?: n.id
                     )
                 },
-                onNotificationClick = { notification ->
-                    if (notification.requestId != null) {
-                        selectedRequestId = notification.requestId
-                        currentScreen = AppScreen.RequestDetails
-                    }
-                    val n = notifications.find { (it._id == notification.requestId || it.requestId == notification.requestId) && it.isRead != true }
-                    if (n != null && loggedInUser != null) {
+                isLoading = notificationsLoading,
+                errorMessage = notificationsError,
+                onRetry = { loadNotifications() },
+                onMarkAllRead = {
+                    val user = loggedInUser
+                    if (user != null) {
                         coroutineScope.launch {
                             try {
-                                val id = n._id ?: n.id ?: ""
-                                if (id.isNotEmpty()) {
-                                    RetrofitClient.api.markNotificationRead(id, loggedInUser!!.id, if (loggedInUser!!.authToken.isNullOrBlank()) null else "Bearer ${loggedInUser!!.authToken}", loggedInUser!!.authToken)
-                                }
-                            } catch (_: Exception) {}
+                                RetrofitClient.api.markAllNotificationsRead(
+                                    user.id,
+                                    user.id,
+                                    if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}",
+                                    user.authToken
+                                )
+                            } catch (_: Exception) {
+                            }
+                            loadNotifications()
                         }
                     }
+                },
+                onNotificationClick = { notification ->
+                    val requestId = notification.requestId
+                    if (!requestId.isNullOrBlank()) {
+                        selectedRequestId = requestId
+                        currentScreen = AppScreen.RequestDetails
+                    }
+                    markNotificationAsRead(notification.notificationId)
                 },
                 onNavigateHome = {
                     currentScreen = homeScreenForCurrentUser()
@@ -429,6 +584,8 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.About
                 },
                 onLogOut = {
+                    loggedInUser = null
+                    AppSessionManager.saveUserSession(context, null)
                     currentScreen = AppScreen.Login
                 },
                 onNavigateHome = {
@@ -441,7 +598,7 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.Alerts
                 },
                 onToggleDarkMode = {
-                    darkMode = !darkMode
+                    setDarkMode(!darkMode)
                 }
             )
             // Donor/Volunteer's Profile screen — a separate screen entirely,
@@ -458,6 +615,8 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.DonorAbout
                 },
                 onLogOut = {
+                    loggedInUser = null
+                    AppSessionManager.saveUserSession(context, null)
                     currentScreen = AppScreen.Login
                 },
                 onNavigateNeeds = {
@@ -470,7 +629,7 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.DonorAlerts
                 },
                 onToggleDarkMode = {
-                    darkMode = !darkMode
+                    setDarkMode(!darkMode)
                 }
             )
             AppScreen.EditProfile -> EditProfileScreen(
@@ -482,6 +641,7 @@ fun BayanihanLinkApp() {
                 },
                 onSaved = { updatedUser ->
                     loggedInUser = updatedUser
+                    AppSessionManager.saveUserSession(context, updatedUser)
                     currentScreen = profileScreenForCurrentUser()
                 }
             )
@@ -510,13 +670,21 @@ fun BayanihanLinkApp() {
             AppScreen.RequestAssistance -> {
                 var evidenceUri by remember { mutableStateOf<Uri?>(null) }
                 val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-                    evidenceUri = uri
+                    if (uri != null) {
+                        // Check the file type and size before using it.
+                        val problem = validateEvidenceImage(context, uri)
+                        if (problem != null) {
+                            Toast.makeText(context, problem, Toast.LENGTH_LONG).show()
+                        } else {
+                            evidenceUri = uri
+                        }
+                    }
                 }
                 RequestAssistanceScreen(
                     userAddress = loggedInUser?.address ?: "",
                     userContact = loggedInUser?.contactNumber ?: "",
                     evidenceUri = evidenceUri,
-                    onImageSelected = { launcher.launch("image/*") },
+                    onUploadImage = { launcher.launch("image/*") },
                     onImageRemoved = { evidenceUri = null },
                     onExit = {
                         currentScreen = homeScreenForCurrentUser()
@@ -614,16 +782,23 @@ fun BayanihanLinkApp() {
                     }
                 )
             }
-            AppScreen.RequestDetails -> RequestDetailsScreen(
-                requestId = selectedRequestId,
-                onBack = {
-                    currentScreen = if (loggedInUser?.accountType == "DONOR_VOLUNTEER") {
-                        AppScreen.DonorHome
-                    } else {
-                        AppScreen.MyRequests
+            AppScreen.RequestDetails -> {
+                // Use the request we already loaded (if we have it) so the
+                // photo and details belong to exactly this request.
+                val request = userRequests.find { it.id == selectedRequestId }
+                    ?: allNeeds.find { it.id == selectedRequestId }
+                RequestDetailsScreen(
+                    requestId = selectedRequestId,
+                    detail = request?.toRequestDetail(),
+                    onBack = {
+                        currentScreen = if (loggedInUser?.accountType == "DONOR_VOLUNTEER") {
+                            AppScreen.DonorHome
+                        } else {
+                            AppScreen.MyRequests
+                        }
                     }
-                }
-            )
+                )
+            }
             AppScreen.DonorHome -> DonorHomeScreen(
                 userName = loggedInUser?.fullName ?: "Guest",
                 needs = allNeeds.map { r ->
@@ -699,25 +874,38 @@ fun BayanihanLinkApp() {
                         timeAgo = n.createdAt?.take(10) ?: "",
                         isUnread = !(n.isRead ?: false),
                         requestId = n.requestId ?: n.targetId,
-                        type = n.type
+                        type = n.type,
+                        notificationId = n._id ?: n.id
                     )
                 },
-                onNotificationClick = { notification ->
-                    if (notification.requestId != null) {
-                        selectedRequestId = notification.requestId
-                        currentScreen = AppScreen.NeedDetails
-                    }
-                    val n = notifications.find { (it._id == notification.requestId || it.requestId == notification.requestId) && it.isRead != true }
-                    if (n != null && loggedInUser != null) {
+                isLoading = notificationsLoading,
+                errorMessage = notificationsError,
+                onRetry = { loadNotifications() },
+                onMarkAllRead = {
+                    val user = loggedInUser
+                    if (user != null) {
                         coroutineScope.launch {
                             try {
-                                val id = n._id ?: n.id ?: ""
-                                if (id.isNotEmpty()) {
-                                    RetrofitClient.api.markNotificationRead(id, loggedInUser!!.id, if (loggedInUser!!.authToken.isNullOrBlank()) null else "Bearer ${loggedInUser!!.authToken}", loggedInUser!!.authToken)
-                                }
-                            } catch (_: Exception) {}
+                                RetrofitClient.api.markAllNotificationsRead(
+                                    user.id,
+                                    user.id,
+                                    if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}",
+                                    user.authToken
+                                )
+                            } catch (_: Exception) {
+                            }
+                            loadNotifications()
                         }
                     }
+                },
+                onNotificationClick = { notification ->
+                    // Donors go to the Donor "request details" (NeedDetails) page.
+                    val requestId = notification.requestId
+                    if (!requestId.isNullOrBlank()) {
+                        selectedRequestId = requestId
+                        currentScreen = AppScreen.NeedDetails
+                    }
+                    markNotificationAsRead(notification.notificationId)
                 },
                 onNavigateNeeds = {
                     currentScreen = AppScreen.DonorHome
@@ -729,15 +917,21 @@ fun BayanihanLinkApp() {
                     currentScreen = AppScreen.DonorProfile
                 }
             )
-            AppScreen.NeedDetails -> com.example.bayanihanlink.donor.NeedDetailsScreen(
-                needId = selectedRequestId,
-                onBack = {
-                    currentScreen = AppScreen.DonorHome
-                },
-                onOfferAssistance = {
-                    currentScreen = AppScreen.OfferAssistance
-                }
-            )
+            AppScreen.NeedDetails -> {
+                // Use the need we already loaded so this page matches the card
+                // (and the photo) the donor tapped on.
+                val need = allNeeds.find { it.id == selectedRequestId }
+                com.example.bayanihanlink.donor.NeedDetailsScreen(
+                    needId = selectedRequestId,
+                    detail = need?.toNeedDetail(),
+                    onBack = {
+                        currentScreen = AppScreen.DonorHome
+                    },
+                    onOfferAssistance = {
+                        currentScreen = AppScreen.OfferAssistance
+                    }
+                )
+            }
             AppScreen.OfferAssistance -> OfferAssistanceScreen(
                 needId = selectedRequestId,
                 needContact = loggedInUser?.contactNumber ?: "",
@@ -792,6 +986,24 @@ fun BayanihanLinkApp() {
 }
 }
 }
+// Checks a photo the user picked. Returns an error message, or null if it's OK.
+private fun validateEvidenceImage(context: Context, uri: Uri): String? {
+    val mimeType = context.contentResolver.getType(uri)
+    if (mimeType != null && !mimeType.startsWith("image/")) {
+        return "Please choose an image file (JPG or PNG)."
+    }
+    val maxSize = 5 * 1024 * 1024 // 5 MB
+    val size = try {
+        context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
+    } catch (_: Exception) {
+        -1L
+    }
+    if (size > maxSize) {
+        return "That image is too large. Please choose a photo under 5 MB."
+    }
+    return null
+}
+
 private fun UserResponse?.toUserProfile(): UserProfile {
     if (this == null) {
         return UserProfile(

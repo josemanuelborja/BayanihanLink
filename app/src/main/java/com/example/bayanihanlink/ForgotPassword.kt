@@ -46,12 +46,20 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import com.example.bayanihanlink.ui.theme.AppColors
 import kotlinx.coroutines.launch
 
-private val ForgotBlue = Color(0xFF2B49CC)
-private val FieldBackground = Color(0xFFF3F4F8)
-private val LabelGray = Color(0xFF8A8FA3)
-private val DarkText = Color(0xFF1A1A2E)
+// These read the current theme colors, so Dark Mode works on these screens too.
+private val ForgotBlue: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
+private val FieldBackground: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.fieldBackground
+private val LabelGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.labelGray
+private val DarkText: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.textPrimary
 
 @Composable
 fun ForgotPasswordScreen(
@@ -75,7 +83,9 @@ fun ForgotPasswordScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppColors.background)
+            .imePadding()
+            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         ForgotTopBar(title = "Forgot Password", onBack = onBack)
@@ -168,7 +178,7 @@ fun ForgotPasswordScreen(
                     Text("Check email", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
             },
-            containerColor = Color.White,
+            containerColor = AppColors.surface,
             shape = RoundedCornerShape(16.dp)
         )
     }

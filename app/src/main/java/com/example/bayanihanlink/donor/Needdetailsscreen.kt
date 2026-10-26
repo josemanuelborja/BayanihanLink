@@ -25,56 +25,75 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.aspectRatio
+import com.example.bayanihanlink.api.RequestResponse
+import com.example.bayanihanlink.api.RetrofitClient
+import com.example.bayanihanlink.api.readableErrorMessage
+import com.example.bayanihanlink.ui.components.RemoteImage
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.text.style.TextAlign
+import com.example.bayanihanlink.ui.theme.AppColors
 
-private val AccentBlue = Color(0xFF2B49CC)
-private val LabelGray = Color(0xFF8A8FA3)
-private val BorderGray = Color(0xFFE3E5EC)
-private val CriticalRed = Color(0xFFE5484D)
+private val AccentBlue: Color
+    @Composable get() = AppColors.accentBlue
+private val LabelGray: Color
+    @Composable get() = AppColors.labelGray
+private val BorderGray: Color
+    @Composable get() = AppColors.borderGray
+private val TextPrimary: Color
+    @Composable get() = AppColors.textPrimary
 private val DoneGreen = Color(0xFF3BB273)
-private val OfferOrange = Color(0xFFF5A623)
+private val CriticalRed = Color(0xFFC62828)
+private val OfferOrange = Color(0xFFE65100)
 
-// Everything shown on this screen for one community need.
 data class NeedDetail(
     val id: String,
     val title: String,
     val date: String,
-    val urgency: String,       // "CRITICAL", "URGENT", "NORMAL"
+    val urgency: String,
     val isVerified: Boolean,
     val disasterType: String,
     val category: String,
     val location: String,
     val itemName: String,
-    val neededQuantityLabel: String, // e.g. "100 Bottles"
+    val neededQuantityLabel: String,
     val description: String,
     val quantityOffered: Int,
-    val quantityTarget: Int
+    val quantityTarget: Int,
+    val evidenceImageUrl: String = ""
 )
 
-// Sample data so this screen works right away, matching the card shown on
-// the Donor Home screen. In a real app, you'd fetch the real need using
-// "needId" from the backend instead of always returning this same sample.
-private fun sampleNeedDetail(needId: String): NeedDetail = NeedDetail(
-    id = needId,
-    title = "Typhoon Assistance",
-    date = "Sep 15, 2026",
-    urgency = "CRITICAL",
-    isVerified = true,
-    disasterType = "Typhoon",
-    category = "Drinking Water",
-    location = "Cagayan de Oro City",
-    itemName = "Drinking Water (1L Bottles)",
-    neededQuantityLabel = "100 Bottles",
-    description = "50 families at the CDO Evacuation Center are urgently in need of clean drinking water. The area's water supply was disrupted by Typhoon Carina.",
-    quantityOffered = 30,
-    quantityTarget = 100
+// Turns the data we got from the backend into the shape this screen uses.
+fun RequestResponse.toNeedDetail(): NeedDetail = NeedDetail(
+    id = id,
+    title = disasterType ?: "Assistance Request",
+    date = dateSubmitted?.take(10) ?: "-",
+    urgency = urgency ?: "NORMAL",
+    isVerified = status == "VERIFIED" || status == "ASSISTED" || status == "COMPLETED",
+    disasterType = disasterType ?: "-",
+    category = categories?.joinToString(", ").takeUnless { it.isNullOrBlank() } ?: category ?: "-",
+    location = location ?: "-",
+    itemName = itemNeeded ?: "-",
+    neededQuantityLabel = "${quantity ?: ""} ${unit ?: ""}".trim().ifBlank { "-" },
+    description = description ?: "",
+    quantityOffered = 0,
+    quantityTarget = quantity?.toIntOrNull() ?: 0,
+    evidenceImageUrl = if (evidenceImage.isNullOrBlank()) "" else RetrofitClient.getImageUrl(evidenceImage)
 )
 
 @Composable
@@ -84,201 +103,227 @@ fun NeedDetailsScreen(
     onBack: () -> Unit = {},
     onOfferAssistance: () -> Unit = {}
 ) {
-    val detailData = detail ?: sampleNeedDetail(needId)
+    // If the caller did not pass the data, load this exact request from the backend.
+    var loadedDetail by remember(needId) { mutableStateOf(detail) }
+    var isLoading by remember(needId) { mutableStateOf(detail == null) }
+    var errorMessage by remember(needId) { mutableStateOf<String?>(null) }
+    var reloadKey by remember(needId) { mutableStateOf(0) }
 
-    Column(
+    LaunchedEffect(needId, reloadKey) {
+        if (loadedDetail == null) {
+            isLoading = true
+            errorMessage = null
+            try {
+                loadedDetail = RetrofitClient.api.getRequestById(needId).toNeedDetail()
+            } catch (error: Exception) {
+                errorMessage = readableErrorMessage(error)
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
-            .verticalScroll(rememberScrollState())
+            .background(AppColors.background)
     ) {
-        // Top bar: back arrow + title
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp)
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Go back", tint = Color(0xFF1A1A2E))
-            }
-            Text("Request Details", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-        }
-
-        // Urgency-colored header card
-        val headerColor = when (detailData.urgency.uppercase()) {
-            "CRITICAL" -> CriticalRed
-            "URGENT" -> OfferOrange
-            else -> DoneGreen
-        }
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .background(headerColor, RoundedCornerShape(16.dp))
-                .padding(16.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
         ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(
+            Spacer(modifier = Modifier.height(60.dp))
+
+            val detailData = loadedDetail
+            if (detailData == null) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 40.dp)
                 ) {
-                    Text(detailData.urgency.uppercase(), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    if (isLoading) {
+                        CircularProgressIndicator(color = AccentBlue, strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Loading request…", fontSize = 13.sp, color = LabelGray)
+                    } else {
+                        Text(
+                            text = errorMessage ?: "Could not load this request.",
+                            fontSize = 13.sp,
+                            color = LabelGray,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { reloadKey += 1 },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)
+                        ) {
+                            Text("Try Again", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
                 }
-                if (detailData.isVerified) {
-                    Text("\u25CF Verified", color = Color.White, fontSize = 12.sp)
+            } else {
+                // Urgency-colored header card
+                val headerColor = when (detailData.urgency.uppercase()) {
+                    "CRITICAL" -> CriticalRed
+                    "URGENT" -> OfferOrange
+                    else -> DoneGreen
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .background(headerColor, RoundedCornerShape(16.dp))
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(detailData.urgency.uppercase(), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                        if (detailData.isVerified) {
+                            Text("● Verified", color = Color.White, fontSize = 12.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(detailData.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("${detailData.id} · ${detailData.date}", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    if (detailData.evidenceImageUrl.isNotBlank()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
+                                .padding(16.dp)
+                        ) {
+                            Text("Image of Disaster", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            RemoteImage(
+                                imageUrl = detailData.evidenceImageUrl,
+                                contentDescription = "Evidence photo for ${detailData.id}",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(16f / 9f)
+                                    .clip(RoundedCornerShape(12.dp))
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    // Disaster Details card
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(width = 1.dp, color = BorderGray, shape = RoundedCornerShape(16.dp))
+                            .padding(16.dp)
+                    ) {
+                        Text("Disaster Details", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        LabeledRow(label = "Disaster Type", value = detailData.disasterType)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LabeledRow(label = "Category", value = detailData.category)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LabeledRow(label = "Location", value = detailData.location)
+
+                        if (detailData.description.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LabeledRow(label = "Description", value = detailData.description)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Requested Items card
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(width = 1.dp, color = BorderGray, shape = RoundedCornerShape(16.dp))
+                            .padding(16.dp)
+                    ) {
+                        Text("Requested Items", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)
+                        ) {
+                            Text(text = detailData.itemName, fontSize = 14.sp, color = TextPrimary)
+                            if (detailData.neededQuantityLabel.isNotBlank()) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(AppColors.accentSoft, RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Text(text = detailData.neededQuantityLabel, fontSize = 12.sp, color = AccentBlue, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = onOfferAssistance,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)
+                    ) {
+                        Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Offer Assistance", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(modifier = Modifier.height(30.dp))
                 }
             }
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(detailData.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text("${detailData.id} \u00B7 ${detailData.date}", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            // "Request Information" card
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
-                    .padding(16.dp)
-            ) {
-                Text("Request Information", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    InfoPair("Disaster", detailData.disasterType, Modifier.weight(1f))
-                    InfoPair("Category", detailData.category, Modifier.weight(1f))
-                }
-                Spacer(modifier = Modifier.height(14.dp))
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    InfoPair("Urgency", detailData.urgency.lowercase().replaceFirstChar { it.uppercase() }, Modifier.weight(1f))
-                    InfoPair("Location", detailData.location, Modifier.weight(1f))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // "Items Needed" card
-            if (detailData.urgency.uppercase() != "CRITICAL") {
-                // For non-critical, ensure evidence context noted (backend-dependent)
-            }
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
-                    .padding(16.dp)
-            ) {
-                Text("Items Needed", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFFBE9EA), RoundedCornerShape(12.dp))
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(detailData.itemName, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text("Urgently Needed", fontSize = 12.sp, color = LabelGray)
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("Needed", fontSize = 12.sp, color = LabelGray)
-                        Text(detailData.neededQuantityLabel, fontSize = 14.sp, color = if (detailData.urgency.uppercase() == "CRITICAL") CriticalRed else AccentBlue, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(detailData.description, fontSize = 13.sp, color = LabelGray)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // "Current Assistance Progress" card
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
-                    .padding(16.dp)
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Current Assistance Progress", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text(
-                        "${detailData.quantityOffered}/${detailData.quantityTarget}",
-                        fontSize = 13.sp,
-                        color = LabelGray
-                    )
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-
-                val progress = if (detailData.quantityTarget == 0) 0f else (detailData.quantityOffered.toFloat() / detailData.quantityTarget.toFloat())
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .background(Color(0xFFE3E5EC), RoundedCornerShape(4.dp))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(progress.coerceIn(0f, 1f))
-                            .height(8.dp)
-                            .background(DoneGreen, RoundedCornerShape(4.dp))
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "${detailData.quantityOffered} items offered so far",
-                    fontSize = 12.sp,
-                    color = LabelGray
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Privacy note
+        // Sticky Header at the top
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter),
+            color = AppColors.background,
+            shadowElevation = 2.dp
+        ) {
             Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFFFFF8E6), RoundedCornerShape(14.dp))
-                    .padding(14.dp)
+                    .padding(start = 4.dp, top = 8.dp, bottom = 8.dp)
             ) {
-                Icon(Icons.Default.Shield, contentDescription = null, tint = Color(0xFFB4690E), modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    "Only general location information is shown to protect the privacy of affected individuals. Personal contact details are not displayed publicly.",
-                    fontSize = 12.sp,
-                    color = Color(0xFFB4690E)
-                )
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Go back", tint = TextPrimary)
+                }
+                Text("Request Details", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Button(
-                onClick = onOfferAssistance,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = OfferOrange)
-            ) {
-                Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Offer Assistance", fontWeight = FontWeight.SemiBold)
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
 
 @Composable
-private fun InfoPair(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Text(label, fontSize = 12.sp, color = LabelGray)
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(value, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1A1A2E))
+private fun LabeledRow(label: String, value: String) {
+    Row {
+        Text(text = label, fontSize = 12.sp, color = LabelGray, modifier = Modifier.weight(0.35f))
+        Text(text = value, fontSize = 13.sp, color = TextPrimary, modifier = Modifier.weight(0.65f))
     }
 }

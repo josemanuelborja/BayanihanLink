@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -38,14 +40,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bayanihanlink.ui.theme.AppColors
 import kotlinx.coroutines.launch
 
 // Donor version of the Change Password screen.
 // It looks the same as the individual one (individual/Changepasswordscreen.kt),
 // only the API call is done for a donor account id.
 
-private val AccentBlue = Color(0xFF2B49CC)
-private val NoteBg = Color(0xFFEFF1FF)
+private val AccentBlue: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
+private val NoteBg: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentSoft
+private val DarkText: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.textPrimary
+private val LabelGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.labelGray
+private val FieldBg: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.fieldBackground
 
 @Composable
 fun DonorChangePasswordScreen(
@@ -63,7 +74,9 @@ fun DonorChangePasswordScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppColors.background)
+            .imePadding()
+            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
     ) {
@@ -73,7 +86,7 @@ fun DonorChangePasswordScreen(
         Icon(
             imageVector = Icons.Default.ArrowBackIosNew,
             contentDescription = "Go back",
-            tint = Color(0xFF1A1A2E),
+            tint = DarkText,
             modifier = Modifier
                 .size(18.dp)
                 .clickable(
@@ -85,7 +98,7 @@ fun DonorChangePasswordScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Text("Change Password", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A2E))
+        Text("Change Password", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = DarkText)
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -93,7 +106,7 @@ fun DonorChangePasswordScreen(
             "Please choose a stronger password. It needs to have at least 6 characters, including both letters and numbers.",
             fontSize = 13.sp,
             lineHeight = 18.sp,
-            color = Color(0xFF1A1A2E)
+            color = DarkText
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -175,17 +188,17 @@ private fun PasswordField(placeholder: String, value: String, onValueChange: (St
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        placeholder = { Text(placeholder, fontSize = 13.sp, color = Color(0xFF8A8FA3)) },
+        placeholder = { Text(placeholder, fontSize = 13.sp, color = LabelGray) },
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            unfocusedContainerColor = Color(0xFFF1F3F8),
-            focusedContainerColor = Color(0xFFF1F3F8),
+            unfocusedContainerColor = FieldBg,
+            focusedContainerColor = FieldBg,
             unfocusedBorderColor = Color.Transparent,
             focusedBorderColor = AccentBlue,
-            focusedTextColor = Color(0xFF1A1A2E),
-            unfocusedTextColor = Color(0xFF1A1A2E)
+            focusedTextColor = DarkText,
+            unfocusedTextColor = DarkText
         ),
         modifier = Modifier.fillMaxWidth()
     )

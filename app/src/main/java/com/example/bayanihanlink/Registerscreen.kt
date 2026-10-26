@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -48,12 +50,19 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bayanihanlink.ui.theme.AppColors
 
-// Same accent color used on the Login and Onboarding screens, so everything matches.
-private val AccentBlue = Color(0xFF2B3FC7)
-private val FieldBackground = Color(0xFFF7F8FA)
-private val FieldBorder = Color(0xFFE3E5EC)
-private val LabelGray = Color(0xFF8A8FA3)
+// These read the current theme colors, so Dark Mode works here too.
+private val AccentBlue: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
+private val FieldBackground: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.fieldBackground
+private val FieldBorder: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.borderGray
+private val LabelGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.labelGray
+private val TextPrimary: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.textPrimary
 
 // The two account types the user can pick from.
 enum class AccountType {
@@ -97,7 +106,9 @@ fun RegisterScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppColors.background)
+            .imePadding()
+            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         // Top bar: back arrow + "Create Account" title
@@ -111,14 +122,14 @@ fun RegisterScreen(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Go back",
-                    tint = Color(0xFF1A1A2E)
+                    tint = TextPrimary
                 )
             }
             Text(
                 text = "Create Account",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF1A1A2E)
+                color = TextPrimary
             )
         }
 
@@ -224,8 +235,9 @@ fun RegisterScreen(
                     colors = CheckboxDefaults.colors(checkedColor = AccentBlue)
                 )
 
+                val agreementBodyColor = AppColors.textSecondary
                 val agreementText = buildAnnotatedString {
-                    withStyle(SpanStyle(color = Color(0xFF5A5F73))) {
+                    withStyle(SpanStyle(color = agreementBodyColor)) {
                         append("I agree to the ")
                     }
                     // "TERMS" tag marks this part as clickable and links it to onTermsClick
@@ -234,7 +246,7 @@ fun RegisterScreen(
                         append("Terms and Condition")
                     }
                     pop()
-                    withStyle(SpanStyle(color = Color(0xFF5A5F73))) {
+                    withStyle(SpanStyle(color = agreementBodyColor)) {
                         append(" and ")
                     }
                     // "PRIVACY" tag marks this part as clickable and links it to onPrivacyClick
@@ -243,7 +255,7 @@ fun RegisterScreen(
                         append("Privacy Policy")
                     }
                     pop()
-                    withStyle(SpanStyle(color = Color(0xFF5A5F73))) {
+                    withStyle(SpanStyle(color = agreementBodyColor)) {
                         append(" of BayanihanLink.")
                     }
                 }
@@ -282,6 +294,8 @@ fun RegisterScreen(
                             "Passwords do not match."
                         contactNumber.trim().isEmpty() ->
                             "Please enter your contact number."
+                        !isValidPhilippinePhone(contactNumber) ->
+                            "Please enter a valid Philippine mobile number (e.g. +639123456789 or 09123456789)."
                         address.trim().isEmpty() ->
                             "Please enter your address."
                         selectedAccountType == null ->
@@ -300,7 +314,7 @@ fun RegisterScreen(
                                 email = email.trim(),
                                 password = password,
                                 confirmPassword = confirmPassword,
-                                contactNumber = contactNumber.trim(),
+                                contactNumber = formatPhilippinePhone(contactNumber),
                                 address = address.trim(),
                                 accountType = selectedAccountType
                             )
@@ -325,8 +339,9 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            val loginLabelColor = LabelGray
             val loginText = buildAnnotatedString {
-                withStyle(SpanStyle(color = LabelGray)) {
+                withStyle(SpanStyle(color = loginLabelColor)) {
                     append("Already have an account? ")
                 }
                 withStyle(SpanStyle(color = AccentBlue, fontWeight = FontWeight.SemiBold)) {
@@ -404,7 +419,7 @@ private fun AccountTypeCard(
                 shape = RoundedCornerShape(14.dp)
             )
             .background(
-                color = if (isSelected) Color(0xFFEEF0FC) else Color.White,
+                color = if (isSelected) AppColors.accentSoft else AppColors.surface,
                 shape = RoundedCornerShape(14.dp)
             )
             .clickable(
@@ -419,7 +434,7 @@ private fun AccountTypeCard(
                 text = title,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF1A1A2E)
+                color = TextPrimary
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(

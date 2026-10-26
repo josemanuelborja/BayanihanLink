@@ -35,11 +35,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bayanihanlink.ui.theme.AppColors
 
-private val AccentBlue = Color(0xFF2B49CC)
-private val LabelGray = Color(0xFF8A8FA3)
+private val AccentBlue: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
+private val LabelGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.labelGray
 private val MintBg = Color(0xFFEFFAF3)
-private val BorderGray = Color(0xFFE3E5EC)
+private val BorderGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.borderGray
+private val TextPrimary: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.textPrimary
 
 // The 3 stages a donation offer can be in.
 enum class OfferStatus { COORDINATING, DISTRIBUTED, COMPLETED }
@@ -55,35 +61,7 @@ data class DonationOffer(
     val coordinatorNote: String? = null
 )
 
-// Sample data so this screen works right away. Replace with real offers from
-// the backend once a "donation offers" endpoint exists.
-private val sampleOffers = listOf(
-    DonationOffer(
-        id = "#DO-000089",
-        itemName = "Drinking Water (1L)",
-        quantity = "30 bottles",
-        relatedRequestId = "#BL-000234",
-        date = "Sep 16, 2026",
-        status = OfferStatus.COORDINATING,
-        coordinatorNote = "Administrator is coordinating your offer with DSWD for verification."
-    ),
-    DonationOffer(
-        id = "#DO-000071",
-        itemName = "Rice (5kg sacks)",
-        quantity = "30 bottles",
-        relatedRequestId = "#BL-000189",
-        date = "Sep 9, 2026",
-        status = OfferStatus.DISTRIBUTED
-    ),
-    DonationOffer(
-        id = "#DO-000055",
-        itemName = "Canned Goods",
-        quantity = "50 pieces",
-        relatedRequestId = "#BL-000140",
-        date = "Aug 25, 2026",
-        status = OfferStatus.COMPLETED
-    )
-)
+
 
 @Composable
 fun MyOffersScreen(
@@ -92,7 +70,7 @@ fun MyOffersScreen(
     onNavigateAlerts: () -> Unit = {},
     onNavigateProfile: () -> Unit = {}
 ) {
-    val offersList = if (offers.isEmpty()) sampleOffers else offers
+    val offersList = offers
     val totalOffers = offersList.size
     val activeOffers = offersList.count { it.status == OfferStatus.COORDINATING }
     val completedOffers = offersList.count {
@@ -112,14 +90,14 @@ fun MyOffersScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color.White)
+                .background(AppColors.background)
                 .verticalScroll(rememberScrollState())
         ) {
             // Blue header with the title
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(AccentBlue, RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
+                    .background(AppColors.headerBlue, RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                     .padding(vertical = 28.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -163,7 +141,7 @@ private fun StatBox(value: String, label: String, valueColor: Color, modifier: M
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .border(1.dp, BorderGray, RoundedCornerShape(14.dp))
-            .background(Color.White, RoundedCornerShape(14.dp))
+            .background(AppColors.surface, RoundedCornerShape(14.dp))
             .padding(vertical = 16.dp)
     ) {
         Text(value, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = valueColor)
@@ -178,7 +156,7 @@ private fun OfferCard(offer: DonationOffer) {
         modifier = Modifier
             .fillMaxWidth()
             .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
-            .background(Color.White, RoundedCornerShape(16.dp))
+            .background(AppColors.surface, RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
         Row(
@@ -196,7 +174,7 @@ private fun OfferCard(offer: DonationOffer) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MintBg, RoundedCornerShape(12.dp))
+                .background(AppColors.cardGray, RoundedCornerShape(12.dp))
                 .padding(14.dp)
         ) {
             DetailColumn("Qty", offer.quantity, Modifier.weight(1f))
@@ -230,7 +208,7 @@ private fun DetailColumn(label: String, value: String, modifier: Modifier = Modi
     Column(modifier = modifier) {
         Text(label, fontSize = 11.sp, color = LabelGray)
         Spacer(modifier = Modifier.height(2.dp))
-        Text(value, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1A1A2E))
+        Text(value, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
     }
 }
 
@@ -257,7 +235,7 @@ private fun MyOffersBottomBar(
     onAlertsClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
-    NavigationBar(containerColor = Color.White) {
+    NavigationBar(containerColor = AppColors.surface) {
         NavigationBarItem(
             selected = false,
             onClick = onNeedsClick,

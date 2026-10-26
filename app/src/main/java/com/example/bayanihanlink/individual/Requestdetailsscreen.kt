@@ -18,29 +18,46 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Description
-
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bayanihanlink.api.RequestResponse
 import com.example.bayanihanlink.api.RetrofitClient
+import com.example.bayanihanlink.api.readableErrorMessage
+import com.example.bayanihanlink.ui.components.RemoteImage
+import com.example.bayanihanlink.ui.theme.AppColors
 
-private val AccentBlue = Color(0xFF2B49CC)
-private val LabelGray = Color(0xFF8A8FA3)
-private val BorderGray = Color(0xFFE3E5EC)
+private val AccentBlue: Color
+    @Composable @ReadOnlyComposable get() = AppColors.accentBlue
+private val LabelGray: Color
+    @Composable @ReadOnlyComposable get() = AppColors.labelGray
+private val BorderGray: Color
+    @Composable @ReadOnlyComposable get() = AppColors.borderGray
+private val TextPrimary: Color
+    @Composable @ReadOnlyComposable get() = AppColors.textPrimary
 private val DoneGreen = Color(0xFF3BB273)
 
 // One line item inside "Requested Items" (e.g. "Rice (5kg sacks)" + "10 packs").
@@ -68,69 +85,154 @@ data class RequestDetail(
     val items: List<RequestedItem>,
     val personsAffected: Int,
     // Which step (1-6, matching "timelineSteps" above) is the CURRENT one.
-    // Steps before this are shown as done (green check); steps after are upcoming (gray).
-    val currentTimelineStep: Int
+    val currentTimelineStep: Int,
+    // Full address of the uploaded evidence photo ("" when there is none).
+    val evidenceImageUrl: String = ""
 )
-private fun sampleRequestDetail(requestId: String): RequestDetail = RequestDetail(
-    id = requestId,
-    urgency = "URGENT",
-    statusLabel = "Verified",
-    disasterType = "Typhoon",
-    category = "Food & Water",
-    dateSubmitted = "Sep 15, 2026",
-    location = "Brgy. 14, CDO",
-    items = listOf(
-        RequestedItem("Rice (5kg sacks)", "10 packs"),
-        RequestedItem("Drinking Water (1L)", "50 bottles")
-    ),
-    personsAffected = 5,
-    currentTimelineStep = 3
-)
+
+// Turns the data we got from the backend into the shape this screen uses.
+fun RequestResponse.toRequestDetail(): RequestDetail {
+    val status = status ?: "PENDING"
+    return RequestDetail(
+        id = id,
+        urgency = urgency ?: "NORMAL",
+        statusLabel = status.lowercase().replaceFirstChar { it.uppercase() },
+        disasterType = disasterType ?: "-",
+        category = categories?.joinToString(", ")
+            .takeUnless { it.isNullOrBlank() }
+            ?: category
+            ?: "-",
+        dateSubmitted = dateSubmitted?.take(10) ?: "-",
+        location = location ?: "-",
+        items = listOf(
+            RequestedItem(
+                name = itemNeeded ?: "-",
+                quantityLabel = "${quantity ?: ""} ${unit ?: ""}".trim()
+            )
+        ),
+        personsAffected = personsAffected ?: 0,
+        currentTimelineStep = currentTimelineStep ?: when (status) {
+            "VERIFIED" -> 3
+            "ASSISTED" -> 5
+            "COMPLETED" -> 6
+            else -> 2
+        },
+        evidenceImageUrl = if (evidenceImage.isNullOrBlank()) "" else RetrofitClient.getImageUrl(evidenceImage)
+    )
+}
 
 @Composable
 fun RequestDetailsScreen(
     requestId: String,
-    evidenceImageUrl: String = "",
+    detail: RequestDetail? = null,
     onBack: () -> Unit = {}
 ) {
-    val detail = sampleRequestDetail(requestId)
+    // If the caller did not pass the request data, we load it from the backend.
+    var loadedDetail by remember(requestId) { mutableStateOf(detail) }
+    var isLoading by remember(requestId) { mutableStateOf(detail == null) }
+    var errorMessage by remember(requestId) { mutableStateOf<String?>(null) }
+    var reloadKey by remember(requestId) { mutableStateOf(0) }
 
-    Column(
+    LaunchedEffect(requestId, reloadKey) {
+        if (loadedDetail == null) {
+            isLoading = true
+            errorMessage = null
+            try {
+                loadedDetail = RetrofitClient.api.getRequestById(requestId).toRequestDetail()
+            } catch (error: Exception) {
+                errorMessage = readableErrorMessage(error)
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
-            .verticalScroll(rememberScrollState())
+            .background(AppColors.background)
     ) {
-        // Top bar: back arrow + title
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Go back", tint = Color(0xFF1A1A2E))
+            // Spacer to push content down below the sticky header height
+            Spacer(modifier = Modifier.height(60.dp))
+
+            val detailData = loadedDetail
+            if (detailData == null) {
+                // Loading / error state
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 48.dp)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(color = AccentBlue, strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Loading request…", fontSize = 13.sp, color = LabelGray)
+                    } else {
+                        Text(
+                            text = errorMessage ?: "Could not load this request.",
+                            fontSize = 13.sp,
+                            color = LabelGray,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { reloadKey += 1 },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)
+                        ) {
+                            Text("Try Again", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    SummaryCard(detail = detailData)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Image of Disaster card — shows the photo sent with the request
+                    ImageOfDisasterCard(imageUrl = detailData.evidenceImageUrl)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    RequestedItemsCard(detail = detailData)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    StatusTimelineCard(currentStep = detailData.currentTimelineStep)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    GovernmentCoordinationCard()
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
             }
-            Text("Request Details", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         }
 
-        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            SummaryCard(detail = detail)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Image of Disaster card — shows the attached evidence photo if available
-            ImageOfDisasterCard(imageUrl = evidenceImageUrl)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            RequestedItemsCard(detail = detail)
-            Spacer(modifier = Modifier.height(16.dp))
-            StatusTimelineCard(currentStep = detail.currentTimelineStep)
-            Spacer(modifier = Modifier.height(16.dp))
-            GovernmentCoordinationCard()
-            Spacer(modifier = Modifier.height(20.dp))
+        // Sticky Header at the top
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter),
+            color = AppColors.background,
+            shadowElevation = 2.dp
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 4.dp, top = 8.dp, bottom = 8.dp)
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back", tint = TextPrimary)
+                }
+                Text("Request Details", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            }
         }
     }
 }
 
-// ---------- Image of Disaster card ---------- 
+// ---------- Image of Disaster card ----------
 @Composable
 private fun ImageOfDisasterCard(imageUrl: String) {
     Column(
@@ -139,53 +241,17 @@ private fun ImageOfDisasterCard(imageUrl: String) {
             .border(width = 1.dp, color = BorderGray, shape = RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
-        Text("Image of Disaster", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text("Image of Disaster", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
         Spacer(modifier = Modifier.height(12.dp))
 
-        Box(
+        RemoteImage(
+            imageUrl = imageUrl,
+            contentDescription = "Evidence photo for this request",
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .background(Color(0xFFF7F8FA), RoundedCornerShape(12.dp))
-                .clip(RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (imageUrl.isNotBlank()) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Description,
-                        contentDescription = null,
-                        tint = AccentBlue,
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Evidence photo attached",
-                        fontSize = 13.sp,
-                        color = Color(0xFF1A1A2E)
-                    )
-                }
-            } else {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Description,
-                        contentDescription = null,
-                        tint = LabelGray,
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "No image attached",
-                        fontSize = 13.sp,
-                        color = LabelGray
-                    )
-                }
-            }
-        }
+                .aspectRatio(16f / 9f),
+            emptyText = "No image attached"
+        )
     }
 }
 
@@ -199,16 +265,30 @@ private fun SummaryCard(detail: RequestDetail) {
             .padding(16.dp)
     ) {
         Row(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
+            verticalAlignment = Alignment.Top
         ) {
-            Column {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text("Request ID", fontSize = 12.sp, color = LabelGray)
-                Text(detail.id, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AccentBlue)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    detail.id,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AccentBlue,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-            Column(horizontalAlignment = Alignment.End) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 UrgencyTag(detail.urgency)
-                Spacer(modifier = Modifier.height(6.dp))
                 StatusTag(detail.statusLabel)
             }
         }
@@ -218,7 +298,7 @@ private fun SummaryCard(detail: RequestDetail) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFF0F4FF), RoundedCornerShape(12.dp))
+                .background(AppColors.accentSoft, RoundedCornerShape(12.dp))
                 .padding(14.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -239,13 +319,13 @@ private fun DetailPair(label: String, value: String, modifier: Modifier = Modifi
     Column(modifier = modifier) {
         Text(text = label, fontSize = 12.sp, color = LabelGray)
         Spacer(modifier = Modifier.height(2.dp))
-        Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1A1A2E))
+        Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
     }
 }
 
 @Composable
 private fun UrgencyTag(urgency: String) {
-    val (background, textColor) = when (urgency) {
+    val (background, textColor) = when (urgency.uppercase()) {
         "URGENT" -> Color(0xFFFCEBD2) to Color(0xFFB4690E)
         "CRITICAL" -> Color(0xFFFAD9DC) to Color(0xFFC62828)
         else -> Color(0xFFDFF3E3) to Color(0xFF2E7D32)
@@ -255,7 +335,7 @@ private fun UrgencyTag(urgency: String) {
             .background(background, RoundedCornerShape(8.dp))
             .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
-        Text(text = urgency, color = textColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(text = urgency.uppercase(), color = textColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -263,7 +343,7 @@ private fun UrgencyTag(urgency: String) {
 private fun StatusTag(status: String) {
     Box(
         modifier = Modifier
-            .background(Color(0xFFE3E9FF), RoundedCornerShape(8.dp))
+            .background(AppColors.accentSoft, RoundedCornerShape(8.dp))
             .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
         Text(text = status, color = AccentBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -279,7 +359,7 @@ private fun RequestedItemsCard(detail: RequestDetail) {
             .border(width = 1.dp, color = BorderGray, shape = RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
-        Text("Requested Items", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text("Requested Items", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
         Spacer(modifier = Modifier.height(12.dp))
 
         detail.items.forEach { item ->
@@ -290,13 +370,15 @@ private fun RequestedItemsCard(detail: RequestDetail) {
                     .fillMaxWidth()
                     .padding(vertical = 6.dp)
             ) {
-                Text(text = item.name, fontSize = 14.sp, color = Color(0xFF1A1A2E))
-                Box(
-                    modifier = Modifier
-                        .background(Color(0xFFE3E9FF), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text(text = item.quantityLabel, fontSize = 12.sp, color = AccentBlue, fontWeight = FontWeight.Medium)
+                Text(text = item.name, fontSize = 14.sp, color = TextPrimary)
+                if (item.quantityLabel.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .background(AppColors.accentSoft, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(text = item.quantityLabel, fontSize = 12.sp, color = AccentBlue, fontWeight = FontWeight.Medium)
+                    }
                 }
             }
         }
@@ -306,7 +388,7 @@ private fun RequestedItemsCard(detail: RequestDetail) {
         Spacer(modifier = Modifier.height(10.dp))
 
         Text(
-            text = "Persons affected: ${detail.personsAffected} family members",
+            text = "Persons affected: ${detail.personsAffected}",
             fontSize = 13.sp,
             color = LabelGray
         )
@@ -322,7 +404,7 @@ private fun StatusTimelineCard(currentStep: Int) {
             .border(width = 1.dp, color = BorderGray, shape = RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
-        Text("Status Timeline", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text("Status Timeline", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
         Spacer(modifier = Modifier.height(14.dp))
 
         timelineSteps.forEachIndexed { index, label ->
@@ -332,7 +414,7 @@ private fun StatusTimelineCard(currentStep: Int) {
             val circleColor = when {
                 isDone -> DoneGreen
                 isCurrent -> AccentBlue
-                else -> Color(0xFFE3E5EC)
+                else -> BorderGray
             }
             val textColor = when {
                 isDone -> DoneGreen
@@ -357,12 +439,18 @@ private fun StatusTimelineCard(currentStep: Int) {
                                 modifier = Modifier.size(16.dp)
                             )
                         } else {
-                            Text(
-                                text = stepNumber.toString(),
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stepNumber.toString(),
+                                    color = if (isCurrent && AppColors.isDark) Color(0xFF101018) else Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
                         }
                     }
                     // Connecting vertical line (skip after the very last step)
@@ -371,7 +459,7 @@ private fun StatusTimelineCard(currentStep: Int) {
                             modifier = Modifier
                                 .width(2.dp)
                                 .height(28.dp)
-                                .background(if (isDone) DoneGreen else Color(0xFFE3E5EC))
+                                .background(if (isDone) DoneGreen else BorderGray)
                         )
                     }
                 }
@@ -400,12 +488,12 @@ private fun GovernmentCoordinationCard() {
         Icon(
             imageVector = Icons.Default.AccountBalance,
             contentDescription = null,
-            tint = Color(0xFF1A1A2E),
+            tint = TextPrimary,
             modifier = Modifier.size(22.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
         Column {
-            Text("Government Coordination", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text("Government Coordination", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Official verification and physical distribution of assistance are handled by the Department of Social Welfare and Development (DSWD) and appropriate government authorities.",

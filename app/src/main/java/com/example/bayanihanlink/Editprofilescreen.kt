@@ -42,15 +42,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import com.example.bayanihanlink.ui.theme.AppColors
 import kotlinx.coroutines.launch
 
-private val AccentBlue = Color(0xFF2B49CC)
-private val FieldBg = Color(0xFFF1F3F8)
-private val LabelGray = Color(0xFF8A8FA3)
+private val AccentBlue: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.accentBlue
+private val FieldBg: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.fieldBackground
+private val LabelGray: Color
+    @Composable @androidx.compose.runtime.ReadOnlyComposable get() = AppColors.labelGray
 private val ButtonCorner = 12.dp
 
 @Composable
@@ -86,7 +96,9 @@ fun EditProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppColors.background)
+            .imePadding()
+            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         // Header (same look as the Profile screen)
@@ -98,7 +110,7 @@ fun EditProfileScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .offset(y = (-32).dp)
-                .background(Color(0xFFF8F9FC), RoundedCornerShape(16.dp))
+                .background(AppColors.cardGray, RoundedCornerShape(16.dp))
                 .padding(16.dp)
         ) {
             EditField("FULL NAME", fullName, { fullName = it })
@@ -139,6 +151,7 @@ fun EditProfileScreen(
                     val errorMessage: String? = when {
                         fullName.trim().isEmpty() -> "Please enter your full name."
                         contactNumber.trim().isEmpty() -> "Please enter your contact number."
+                        !isValidPhilippinePhone(contactNumber) -> "Please enter a valid Philippine mobile number (e.g. +639123456789 or 09123456789)."
                         newPassword.isNotBlank() && currentPassword.isEmpty() -> "Please enter your current password."
                         newPassword.isNotBlank() && newPassword.length < 6 -> "New password must be at least 6 characters."
                         else -> null
@@ -156,7 +169,7 @@ fun EditProfileScreen(
                                     request = UpdateProfileRequest(
                                         fullName = fullName.trim(),
                                         email = email.trim(),
-                                        contactNumber = contactNumber.trim(),
+                                        contactNumber = formatPhilippinePhone(contactNumber),
                                         address = address.trim()
                                     ),
                                     userIdHeader = userId,
@@ -192,9 +205,20 @@ fun EditProfileScreen(
                     containerColor = AccentBlue,
                     disabledContainerColor = Color(0xFFD5D8E4),
                     disabledContentColor = Color(0xFF9A9EB0)
-                )
+                ),
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
             ) {
-                Text(if (isSaving) "Saving..." else "Save Changes", fontWeight = FontWeight.SemiBold)
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        if (isSaving) "Saving..." else "Save Changes",
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
+                }
             }
         }
 
@@ -232,12 +256,12 @@ private fun EditField(
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedContainerColor = FieldBg,
                 focusedContainerColor = FieldBg,
-                disabledContainerColor = Color(0xFFEDEFF4),
+                disabledContainerColor = AppColors.cardGray,
                 unfocusedBorderColor = Color.Transparent,
                 focusedBorderColor = AccentBlue,
                 disabledBorderColor = Color.Transparent,
-                unfocusedTextColor = Color(0xFF1A1A2E),
-                focusedTextColor = Color(0xFF1A1A2E),
+                unfocusedTextColor = AppColors.textPrimary,
+                focusedTextColor = AppColors.textPrimary,
                 disabledTextColor = LabelGray
             ),
             modifier = Modifier.fillMaxWidth()
