@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -56,7 +58,8 @@ fun LoginScreen(
     onLogIn: (email: String, password: String) -> Unit = { _, _ -> },
     onCreateAccount: () -> Unit = {},
     onForgotPassword: () -> Unit = {},
-    onAdminLogin: () -> Unit = {}
+    onAdminLogin: () -> Unit = {},
+    onFingerprintLogin: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -66,6 +69,7 @@ fun LoginScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
+            .verticalScroll(rememberScrollState())
     ) {
         // Curved blue header
         Box(
@@ -212,6 +216,34 @@ fun LoginScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = LoginBlue)
             ) {
                 Text("Log In", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Button(
+                onClick = onFingerprintLogin,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White.copy(alpha = 0.1f),
+                    disabledContainerColor = Color.White.copy(alpha = 0.05f)
+                )
+            ) {
+                Row(
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Fingerprint,
+                        contentDescription = null,
+                        tint = LoginBlue,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Use Fingerprint", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = LoginBlue)
+                }
             }
 
             Spacer(modifier = Modifier.height(18.dp))

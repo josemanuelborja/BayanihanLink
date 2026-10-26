@@ -26,7 +26,13 @@ interface ApiService {
 
     // Matches: PUT /api/users/:id on the backend
     @PUT("api/users/{id}")
-    suspend fun updateProfile(@Path("id") id: String, @Body request: UpdateProfileRequest): UserResponse
+    suspend fun updateProfile(
+        @Path("id") id: String,
+        @Body request: UpdateProfileRequest,
+        @Header("x-user-id") userIdHeader: String? = null,
+        @Header("Authorization") authHeader: String? = null,
+        @Header("x-auth-token") authTokenHeader: String? = null
+    ): UserResponse
 
     // Matches: POST /api/auth/change-password on the backend
     @POST("api/auth/change-password")

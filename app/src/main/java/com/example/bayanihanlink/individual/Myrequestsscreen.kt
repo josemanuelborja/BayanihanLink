@@ -95,6 +95,7 @@ fun MyRequestsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(Color.White)
+                .verticalScroll(rememberScrollState())
         ) {
             // Sticky top bar
             Box(
@@ -122,8 +123,6 @@ fun MyRequestsScreen(
             } else {
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
                         .padding(horizontal = 20.dp)
                 ) {
                     filteredRequests.forEach { request ->

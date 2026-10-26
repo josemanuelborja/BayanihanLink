@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.MaterialTheme
 
 // This is the Profile screen for AFFECTED INDIVIDUAL accounts.
 // Donors/Volunteers use the separate DonorProfileScreen.kt instead
@@ -75,7 +77,8 @@ fun ProfileScreen(
     onLogOut: () -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onNavigateMyRequest: () -> Unit = {},
-    onNavigateAlerts: () -> Unit = {}
+    onNavigateAlerts: () -> Unit = {},
+    onToggleDarkMode: () -> Unit = {}
 ) {
     Scaffold(
         bottomBar = {
@@ -90,7 +93,7 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.background)
                 .verticalScroll(rememberScrollState())
         ) {
             ProfileHeader(user = user, onEditProfile = onEditProfile)
@@ -205,7 +208,7 @@ private fun AccountInfoCard(user: UserProfile, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(CardBg, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
         Text(
@@ -300,7 +303,8 @@ private fun MenuCard(
     onEditProfile: () -> Unit,
     onChangePassword: () -> Unit,
     onMyRequests: () -> Unit,
-    onAboutBayanihanLink: () -> Unit
+    onAboutBayanihanLink: () -> Unit,
+    onToggleDarkMode: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -316,6 +320,8 @@ private fun MenuCard(
         MenuRow(icon = Icons.Default.Description, label = "My Requests", onClick = onMyRequests)
         MenuDivider()
         MenuRow(icon = Icons.Default.Info, label = "About BayanihanLink", onClick = onAboutBayanihanLink)
+        MenuDivider()
+        MenuRow(icon = Icons.Default.Brightness6, label = "Dark Mode", onClick = onToggleDarkMode)
     }
 }
 
@@ -327,7 +333,6 @@ private fun MenuRow(icon: ImageVector, label: String, onClick: () -> Unit) {
             .fillMaxWidth()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null,
                 onClick = onClick
             )
             .padding(horizontal = 16.dp, vertical = 15.dp)

@@ -195,7 +195,7 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 AccountTypeCard(
-                    title = "Affected Individual",
+                    title = "Citizen",
                     subtitle = "I need assistance",
                     isSelected = selectedAccountType == AccountType.AFFECTED_INDIVIDUAL,
                     onClick = { selectedAccountType = AccountType.AFFECTED_INDIVIDUAL },

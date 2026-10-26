@@ -37,7 +37,13 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,6 +80,17 @@ data class UpdateItem(
     val timeAgo: String
 )
 
+// Returns "Good morning", "Good afternoon", or "Good evening" based on the current time.
+// Updates automatically every minute so the greeting stays correct without a page refresh.
+private fun timeBasedGreeting(): String {
+    val hour = java.time.LocalDateTime.now().hour
+    return when {
+        hour >= 0 && hour < 12 -> "Good morning"
+        hour >= 12 && hour < 18 -> "Good afternoon"
+        else -> "Good evening"
+    }
+}
+
 @Composable
 fun HomeScreen(
     userName: String = "",
@@ -91,10 +108,20 @@ fun HomeScreen(
     alertBannerMessage: String? = null,
     onRequestAssistance: () -> Unit = {},
     onViewRequestDetails: () -> Unit = {},
+    onUpdateClick: (String) -> Unit = {},
     onNavigateMyRequest: () -> Unit = {},
     onNavigateAlerts: () -> Unit = {},
     onNavigateProfile: () -> Unit = {}
 ) {
+    // Recompute the greeting every minute so it stays accurate without refreshing.
+    var greeting by remember { mutableStateOf(timeBasedGreeting()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(60000) // check every minute
+            greeting = timeBasedGreeting()
+        }
+    }
+
     // Scaffold = a ready-made screen "frame" that reserves space for a bottom bar
     // (and can also hold a top bar, floating button, etc. if you need them later).
     Scaffold(
@@ -114,7 +141,7 @@ fun HomeScreen(
                 .background(Color.White)
                 .verticalScroll(rememberScrollState())
         ) {
-            HomeHeader(userName = userName, alertTitle = alertBannerTitle, alertMessage = alertBannerMessage)
+            HomeHeader(greeting = greeting, userName = userName, alertTitle = alertBannerTitle, alertMessage = alertBannerMessage)
 
             Column(
                 modifier = Modifier
@@ -144,7 +171,10 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                RecentUpdatesSection(updates = recentUpdates)
+                RecentUpdatesSection(
+                    updates = recentUpdates,
+                    onUpdateClick = onUpdateClick
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -152,9 +182,9 @@ fun HomeScreen(
     }
 }
 
-// ---------- Top blue header: greeting + avatar + alert banner ----------
+// ---------- Top blue header: greeting + avatar + alert banner ---------- 
 @Composable
-private fun HomeHeader(userName: String, alertTitle: String? = null, alertMessage: String? = null) {
+private fun HomeHeader(greeting: String, userName: String, alertTitle: String? = null, alertMessage: String? = null) {
     // Turn name into initials
     val initials = remember(userName) {
         if (userName.isBlank()) {
@@ -184,7 +214,7 @@ private fun HomeHeader(userName: String, alertTitle: String? = null, alertMessag
         ) {
             Column {
                 Text(
-                    text = "Good morning,",
+                    text = greeting + ",",
                     color = Color.White.copy(alpha = 0.85f),
                     fontSize = 14.sp
                 )
@@ -298,6 +328,11 @@ private fun ActiveRequestSection(
                 .fillMaxWidth()
                 .background(Color.White, RoundedCornerShape(16.dp))
                 .padding(16.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onViewDetails
+                )
         ) {
             Row(
                 verticalAlignment = Alignment.Top,
@@ -333,13 +368,6 @@ private fun ActiveRequestSection(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            Text(
-                text = "View Details \u2192",
-                color = AccentBlue,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
-                modifier = Modifier.clickableSimple(onViewDetails)
-            )
         }
     }
 }
@@ -460,9 +488,12 @@ private fun StatBox(value: String, label: String, valueColor: Color, modifier: M
     }
 }
 
-// ---------- "Recent Updates" section ----------
+// ---------- "Recent Updates" section ---------- 
 @Composable
-private fun RecentUpdatesSection(updates: List<UpdateItem>) {
+private fun RecentUpdatesSection(
+    updates: List<UpdateItem>,
+    onUpdateClick: (String) -> Unit = {}
+) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Text("Recent Updates", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(10.dp))
@@ -476,6 +507,8 @@ private fun RecentUpdatesSection(updates: List<UpdateItem>) {
             )
         } else {
             updates.forEach { update ->
+                // Use a hash of the message as a simple request id for navigation
+                val updateId = update.message.hashCode().toString()
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -483,6 +516,11 @@ private fun RecentUpdatesSection(updates: List<UpdateItem>) {
                         .padding(bottom = 10.dp)
                         .background(Color.White, RoundedCornerShape(14.dp))
                         .padding(12.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onUpdateClick(updateId) }
+                        )
                 ) {
                     Box(
                         modifier = Modifier

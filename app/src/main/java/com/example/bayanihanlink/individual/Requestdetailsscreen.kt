@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,10 +18,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Description
+
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -32,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bayanihanlink.api.RetrofitClient
 
 private val AccentBlue = Color(0xFF2B49CC)
 private val LabelGray = Color(0xFF8A8FA3)
@@ -85,6 +90,7 @@ private fun sampleRequestDetail(requestId: String): RequestDetail = RequestDetai
 @Composable
 fun RequestDetailsScreen(
     requestId: String,
+    evidenceImageUrl: String = "",
     onBack: () -> Unit = {}
 ) {
     val detail = sampleRequestDetail(requestId)
@@ -109,12 +115,76 @@ fun RequestDetailsScreen(
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             SummaryCard(detail = detail)
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Image of Disaster card — shows the attached evidence photo if available
+            ImageOfDisasterCard(imageUrl = evidenceImageUrl)
+            Spacer(modifier = Modifier.height(16.dp))
+
             RequestedItemsCard(detail = detail)
             Spacer(modifier = Modifier.height(16.dp))
             StatusTimelineCard(currentStep = detail.currentTimelineStep)
             Spacer(modifier = Modifier.height(16.dp))
             GovernmentCoordinationCard()
             Spacer(modifier = Modifier.height(20.dp))
+        }
+    }
+}
+
+// ---------- Image of Disaster card ---------- 
+@Composable
+private fun ImageOfDisasterCard(imageUrl: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(width = 1.dp, color = BorderGray, shape = RoundedCornerShape(16.dp))
+            .padding(16.dp)
+    ) {
+        Text("Image of Disaster", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .background(Color(0xFFF7F8FA), RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (imageUrl.isNotBlank()) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Description,
+                        contentDescription = null,
+                        tint = AccentBlue,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Evidence photo attached",
+                        fontSize = 13.sp,
+                        color = Color(0xFF1A1A2E)
+                    )
+                }
+            } else {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Description,
+                        contentDescription = null,
+                        tint = LabelGray,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "No image attached",
+                        fontSize = 13.sp,
+                        color = LabelGray
+                    )
+                }
+            }
         }
     }
 }

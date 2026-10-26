@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
@@ -75,7 +76,8 @@ fun DonorProfileScreen(
     onLogOut: () -> Unit = {},
     onNavigateNeeds: () -> Unit = {},
     onNavigateMyOffers: () -> Unit = {},
-    onNavigateAlerts: () -> Unit = {}
+    onNavigateAlerts: () -> Unit = {},
+    onToggleDarkMode: () -> Unit = {}
 ) {
     Scaffold(
         bottomBar = {
@@ -90,7 +92,7 @@ fun DonorProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.background)
                 .verticalScroll(rememberScrollState())
         ) {
             // Donors show a short "Donor" badge instead of the full account type.
@@ -238,7 +240,8 @@ private fun DonorStatBox(
 private fun DonorMenuCard(
     onEditProfile: () -> Unit,
     onChangePassword: () -> Unit,
-    onAboutBayanihanLink: () -> Unit
+    onAboutBayanihanLink: () -> Unit,
+    onToggleDarkMode: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -252,6 +255,8 @@ private fun DonorMenuCard(
         DonorMenuRow(icon = Icons.Default.Lock, label = "Change Password", onClick = onChangePassword)
         DonorMenuDivider()
         DonorMenuRow(icon = Icons.Default.Info, label = "About BayanihanLink", onClick = onAboutBayanihanLink)
+        DonorMenuDivider()
+        DonorMenuRow(icon = Icons.Default.Brightness6, label = "Dark Mode", onClick = onToggleDarkMode)
     }
 }
 
@@ -263,7 +268,6 @@ private fun DonorMenuRow(icon: ImageVector, label: String, onClick: () -> Unit) 
             .fillMaxWidth()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null,
                 onClick = onClick
             )
             .padding(horizontal = 16.dp, vertical = 15.dp)

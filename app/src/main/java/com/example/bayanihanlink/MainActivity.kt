@@ -3,8 +3,11 @@ package com.example.bayanihanlink
 import com.example.bayanihanlink.api.*
 import com.example.bayanihanlink.individual.*
 import com.example.bayanihanlink.donor.*
+import com.example.bayanihanlink.individual.UpdateItem
 
 import android.net.Uri
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.ui.graphics.Color
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -45,15 +48,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            BayanihanLinkTheme {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding()
-                ) {
-                    BayanihanLinkApp()
-                }
-            }
+            BayanihanLinkApp()
         }
     }
 }
@@ -63,6 +58,7 @@ private enum class AppScreen {
     Splash,
     Onboarding,
     Login,
+    Biometric,
     Register,
     ForgotPassword,
     ForgotPasswordOtp,
@@ -88,9 +84,17 @@ private enum class AppScreen {
 
 @Composable
 fun BayanihanLinkApp() {
+    var darkMode by remember { mutableStateOf(false) }
     var currentScreen by remember { mutableStateOf(AppScreen.Splash) }
 
     var selectedRequestId by remember { mutableStateOf("#BL-000234") }
+
+    BayanihanLinkTheme(darkTheme = darkMode) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
 
     // The account that's currently logged in (filled in after a successful login)
     var loggedInUser by remember { mutableStateOf<UserResponse?>(null) }
@@ -106,6 +110,7 @@ fun BayanihanLinkApp() {
     val allNeeds = remember { mutableStateListOf<RequestResponse>() }
     val userOffers = remember { mutableStateListOf<OfferResponse>() }
     val notifications = remember { mutableStateListOf<NotificationResponse>() }
+    val recentUpdates = remember { mutableStateListOf<UpdateItem>() }
 
     // Whenever some screen wants to go "back to Home", this decides WHICH
     // home screen that means — Affected Individuals and Donors/Volunteers
@@ -193,6 +198,22 @@ fun BayanihanLinkApp() {
                 },
                 onAdminLogin = {
 
+                },
+                onFingerprintLogin = {
+                    currentScreen = AppScreen.Biometric
+                }
+            )
+            AppScreen.Biometric -> BiometricScreen(
+                context = context,
+                onAuthenticated = {
+                    // After successful fingerprint auth, go to home (user must have
+                    // an existing session; in a real app we'd restore it from secure storage).
+                    // For now, we just return to login so the user enters credentials once.
+                    currentScreen = AppScreen.Login
+                    Toast.makeText(context, "Biometric authenticated.", Toast.LENGTH_SHORT).show()
+                },
+                onSkip = {
+                    currentScreen = AppScreen.Login
                 }
             )
             AppScreen.ForgotPassword -> ForgotPasswordScreen(
@@ -253,7 +274,7 @@ fun BayanihanLinkApp() {
                                         accountType = formData.accountType.name
                                     )
                                 )
-                                Toast.makeText(context, "Account created! Please log in.", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Account created! Please check your email to verify your account before logging in.", Toast.LENGTH_LONG).show()
                                 currentScreen = AppScreen.Login
                             } catch (error: Exception) {
                                 Toast.makeText(context, readableErrorMessage(error), Toast.LENGTH_LONG).show()
@@ -286,12 +307,16 @@ fun BayanihanLinkApp() {
                     totalRequests = userRequests.size,
                     verifiedRequests = userRequests.count { it.status == "VERIFIED" },
                     completedRequests = userRequests.count { it.status == "COMPLETED" },
-                    recentUpdates = emptyList(),
+                    recentUpdates = recentUpdates,
                     onRequestAssistance = {
                         currentScreen = AppScreen.RequestAssistance
                     },
                     onViewRequestDetails = {
                         if (active != null) selectedRequestId = active.id
+                        currentScreen = AppScreen.RequestDetails
+                    },
+                    onUpdateClick = { requestId ->
+                        selectedRequestId = requestId
                         currentScreen = AppScreen.RequestDetails
                     },
                     onNavigateMyRequest = {
@@ -414,6 +439,9 @@ fun BayanihanLinkApp() {
                 },
                 onNavigateAlerts = {
                     currentScreen = AppScreen.Alerts
+                },
+                onToggleDarkMode = {
+                    darkMode = !darkMode
                 }
             )
             // Donor/Volunteer's Profile screen — a separate screen entirely,
@@ -440,11 +468,15 @@ fun BayanihanLinkApp() {
                 },
                 onNavigateAlerts = {
                     currentScreen = AppScreen.DonorAlerts
+                },
+                onToggleDarkMode = {
+                    darkMode = !darkMode
                 }
             )
             AppScreen.EditProfile -> EditProfileScreen(
                 userId = loggedInUser?.id ?: "",
                 user = loggedInUser.toUserProfile(),
+                authToken = loggedInUser?.authToken ?: "",
                 onBack = {
                     currentScreen = profileScreenForCurrentUser()
                 },
@@ -483,6 +515,9 @@ fun BayanihanLinkApp() {
                 RequestAssistanceScreen(
                     userAddress = loggedInUser?.address ?: "",
                     userContact = loggedInUser?.contactNumber ?: "",
+                    evidenceUri = evidenceUri,
+                    onImageSelected = { launcher.launch("image/*") },
+                    onImageRemoved = { evidenceUri = null },
                     onExit = {
                         currentScreen = homeScreenForCurrentUser()
                     },
@@ -558,6 +593,18 @@ fun BayanihanLinkApp() {
                                     val reqs = RetrofitClient.api.getUserRequests(user.id, user.id, if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}", user.authToken)
                                     userRequests.clear()
                                     userRequests.addAll(reqs)
+
+                                    // Add to Recent Updates so it shows on Home screen
+                                    val disasterLabel = disasterType
+                                    val itemLabel = if (itemNeeded.isNotBlank()) itemNeeded else "Assistance request"
+                                    val accentBlue = Color(0xFF2B49CC)
+                                    val updateItem = UpdateItem(
+                                        icon = Icons.Default.Description,
+                                        iconBackground = accentBlue,
+                                        message = "Request submitted: $itemLabel ($disasterLabel)",
+                                        timeAgo = "Just now"
+                                    )
+                                    recentUpdates.add(0, updateItem)
                                 } catch (_: Exception) {}
                                 currentScreen = AppScreen.MyRequests
                             } catch (error: Exception) {
@@ -588,7 +635,8 @@ fun BayanihanLinkApp() {
                         neededQuantity = "${r.quantity ?: ""} ${r.unit ?: ""}".trim(),
                         description = r.description ?: "",
                         location = r.location ?: "",
-                        date = r.dateSubmitted?.take(10) ?: ""
+                        date = r.dateSubmitted?.take(10) ?: "",
+                        evidenceImageUrl = if (r.evidenceImage.isNullOrBlank()) "" else RetrofitClient.getImageUrl(r.evidenceImage!!)
                     )
                 },
                 onViewRequest = { needId ->
@@ -692,6 +740,7 @@ fun BayanihanLinkApp() {
             )
             AppScreen.OfferAssistance -> OfferAssistanceScreen(
                 needId = selectedRequestId,
+                needContact = loggedInUser?.contactNumber ?: "",
                 onBack = {
                     currentScreen = AppScreen.NeedDetails
                 },
@@ -741,6 +790,8 @@ fun BayanihanLinkApp() {
         }
     }
 }
+}
+}
 private fun UserResponse?.toUserProfile(): UserProfile {
     if (this == null) {
         return UserProfile(
@@ -762,7 +813,7 @@ private fun UserResponse?.toUserProfile(): UserProfile {
         address = address,
         // The backend stores "AFFECTED_INDIVIDUAL" — turn it into readable text.
         accountType = when (accountType) {
-            "AFFECTED_INDIVIDUAL" -> "Affected Individual"
+            "AFFECTED_INDIVIDUAL" -> "Citizen"
             "DONOR_VOLUNTEER" -> "Donor / Volunteer"
             else -> accountType
         },

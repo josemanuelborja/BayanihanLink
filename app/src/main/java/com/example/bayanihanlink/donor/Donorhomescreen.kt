@@ -1,5 +1,6 @@
 package com.example.bayanihanlink.donor
 
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,12 +40,16 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -58,16 +63,17 @@ private val BorderGray = Color(0xFFE3E5EC)
 // The 4 filter chips at the top: All | Critical | Urgent | Normal
 private enum class NeedFilter { ALL, CRITICAL, URGENT, NORMAL }
 
-// One community need card. Prepared for backend integration.
-data class CommunityNeed(
-    val id: String,
-    val urgency: String, // "CRITICAL", "URGENT", "NORMAL"
-    val title: String,
-    val itemName: String,
-    val neededQuantity: String,
-    val description: String,
-    val location: String,
-    val date: String
+// One community need card. Prepared for backend integration. 
+data class CommunityNeed( 
+    val id: String, 
+    val urgency: String, // "CRITICAL", "URGENT", "NORMAL" 
+    val title: String, 
+    val itemName: String, 
+    val neededQuantity: String, 
+    val description: String, 
+    val location: String, 
+    val date: String, 
+    val evidenceImageUrl: String = "" 
 )
 
 private val sampleNeeds = listOf(
@@ -123,6 +129,17 @@ private val sampleNeeds = listOf(
     )
 )
 
+// Returns "Good morning", "Good afternoon", or "Good evening" based on the current time.
+// Updates automatically every minute so the greeting stays correct without a page refresh.
+private fun timeBasedGreeting(): String {
+    val hour = java.time.LocalDateTime.now().hour
+    return when {
+        hour >= 0 && hour < 12 -> "Good morning"
+        hour >= 12 && hour < 18 -> "Good afternoon"
+        else -> "Good evening"
+    }
+}
+
 @Composable
 fun DonorHomeScreen(
     userName: String = "Guest",
@@ -134,6 +151,15 @@ fun DonorHomeScreen(
 ) {
     var selectedFilter by remember { mutableStateOf(NeedFilter.ALL) }
     var searchText by remember { mutableStateOf("") }
+
+    // Recompute the greeting every minute so it stays accurate without refreshing.
+    var greeting by remember { mutableStateOf(timeBasedGreeting()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(60000) // check every minute
+            greeting = timeBasedGreeting()
+        }
+    }
 
     val needsList = if (needs.isEmpty()) sampleNeeds else needs
     val filteredNeeds = needsList
@@ -161,6 +187,7 @@ fun DonorHomeScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             DonorHeader(
+                greeting = greeting,
                 userName = userName,
                 needsCount = needsList.size,
                 searchText = searchText,
@@ -189,9 +216,10 @@ fun DonorHomeScreen(
     }
 }
 
-// ---------- Top blue header: greeting + avatar + "Community Needs" + search bar ----------
+// ---------- Top blue header: greeting + avatar + "Community Needs" + search bar ---------- 
 @Composable
 private fun DonorHeader(
+    greeting: String,
     userName: String,
     needsCount: Int = 0,
     searchText: String,
@@ -220,7 +248,7 @@ private fun DonorHeader(
             ) {
                 Column {
                     Text(
-                        text = "Good morning,",
+                        text = greeting + ",",
                         color = Color.White.copy(alpha = 0.85f),
                         fontSize = 14.sp
                     )
@@ -337,55 +365,84 @@ private fun CommunityNeedCard(need: CommunityNeed, onViewRequest: () -> Unit) {
             // page background is invisible (no edges to see where it starts/ends).
             .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
             .background(Color.White, RoundedCornerShape(16.dp))
-            .padding(16.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            UrgencyTag(need.urgency)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = need.id, fontSize = 12.sp, color = LabelGray)
+        // Disaster image at the top of the card (if available)
+        if (need.evidenceImageUrl.isNotBlank()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .background(Color(0xFFF7F8FA), RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "📷",
+                        fontSize = 48.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Evidence photo attached",
+                        fontSize = 13.sp,
+                        color = Color(0xFF1A1A2E)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(text = need.title, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = need.itemName, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Text(text = need.neededQuantity, fontSize = 13.sp, color = AccentBlue, fontWeight = FontWeight.SemiBold)
-        }
-
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(text = need.description, fontSize = 13.sp, color = LabelGray)
-
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.LocationOn,
-                    contentDescription = null,
-                    tint = LabelGray,
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = need.location, fontSize = 12.sp, color = LabelGray)
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(text = need.date, fontSize = 12.sp, color = LabelGray)
+                UrgencyTag(need.urgency)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = need.id, fontSize = 12.sp, color = LabelGray)
             }
 
-            Button(
-                onClick = onViewRequest,
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(text = need.title, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text("View Request", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(text = need.itemName, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(text = need.neededQuantity, fontSize = 13.sp, color = AccentBlue, fontWeight = FontWeight.SemiBold)
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(text = need.description, fontSize = 13.sp, color = LabelGray)
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = LabelGray,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = need.location, fontSize = 12.sp, color = LabelGray)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(text = need.date, fontSize = 12.sp, color = LabelGray)
+                }
+
+                Button(
+                    onClick = onViewRequest,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text("View Request", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }

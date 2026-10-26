@@ -1,5 +1,6 @@
 package com.example.bayanihanlink.individual
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Checkroom
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LocalDrink
@@ -62,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.net.Uri
 
 // Prepare for backend integration: submit to API when available
 private val AccentBlue = Color(0xFF2B49CC)
@@ -104,6 +107,9 @@ private val unitOptions = listOf("packs", "kg", "liters", "pieces", "sets", "box
 fun RequestAssistanceScreen(
     userAddress: String = "",
     userContact: String = "",
+    evidenceUri: Uri? = null,
+    onImageSelected: (Uri) -> Unit = {},
+    onImageRemoved: () -> Unit = {},
     onExit: () -> Unit = {},
     onViewMyRequest: () -> Unit = {},
     onBackToHome: () -> Unit = {},
@@ -120,13 +126,13 @@ fun RequestAssistanceScreen(
     var unit by rememberSaveable { mutableStateOf(unitOptions.first()) }
     var description by rememberSaveable { mutableStateOf("") }
     var affectedPersons by rememberSaveable { mutableStateOf("") }
-    var hasEvidence by rememberSaveable { mutableStateOf(false) }
+    var hasEvidence by rememberSaveable { mutableStateOf(evidenceUri != null) }
 
     // The Next button on each step is only enabled once the required info is filled in.
     val isDisasterStepValid = selectedDisaster != null
     val isNeedsStepValid = selectedCategories.isNotEmpty()
     val affectedCount = affectedPersons.trim().toIntOrNull()
-    val isDetailsStepValid = itemNeeded.isNotBlank() && quantity.isNotBlank() && affectedPersons.isNotBlank() && affectedCount != null && affectedCount > 13 && hasEvidence
+    val isDetailsStepValid = itemNeeded.isNotBlank() && quantity.isNotBlank() && affectedPersons.isNotBlank() && affectedCount != null && affectedCount >= 1 && affectedCount <= 13 && hasEvidence
 
     if (currentStep == WizardStep.SUCCESS) {
         RequestSubmittedScreen(
@@ -187,8 +193,9 @@ fun RequestAssistanceScreen(
                     onDescriptionChange = { description = it },
                     affectedPersons = affectedPersons,
                     onAffectedPersonsChange = { affectedPersons = it },
-                    hasEvidence = hasEvidence,
-                    onEvidenceChange = { hasEvidence = it }
+                    evidenceUri = evidenceUri,
+                    onImageSelected = onImageSelected,
+                    onImageRemoved = onImageRemoved
                 )
                 WizardStep.REVIEW -> ReviewStep(
                     disaster = selectedDisaster,
@@ -442,8 +449,9 @@ private fun DetailsStep(
     onDescriptionChange: (String) -> Unit,
     affectedPersons: String,
     onAffectedPersonsChange: (String) -> Unit,
-    hasEvidence: Boolean,
-    onEvidenceChange: (Boolean) -> Unit
+    evidenceUri: Uri?,
+    onImageSelected: (Uri) -> Unit,
+    onImageRemoved: () -> Unit
 ) {
     Text("Provide details about your need", fontSize = 17.sp, fontWeight = FontWeight.Bold)
     Spacer(modifier = Modifier.height(16.dp))
@@ -489,9 +497,12 @@ private fun DetailsStep(
         placeholder = { Text("Describe your need...") },
         shape = RoundedCornerShape(14.dp),
         colors = fieldColors(),
+        // Allow the text field to expand vertically as the user types
+        // so the entered text is always visible.
+        minLines = 3,
+        maxLines = 8,
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp)
     )
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -506,20 +517,61 @@ private fun DetailsStep(
         colors = fieldColors(),
         modifier = Modifier.fillMaxWidth()
     )
-    Text("Must be greater than 13.", fontSize = 11.sp, color = LabelGray)
+    Text("Must be between 1 and 13.", fontSize = 11.sp, color = LabelGray)
 
     Spacer(modifier = Modifier.height(16.dp))
 
-    FieldLabel("PICTURE EVIDENCE (REQUIRED)")
-    Button(
-        onClick = { onEvidenceChange(true) },
-        shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = if (hasEvidence) DoneGreen else AccentBlue),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(if (hasEvidence) "Evidence Attached" else "Attach Picture Evidence", fontWeight = FontWeight.SemiBold)
+    FieldLabel("UPLOAD IMAGE (PROOF OF DISASTER)")
+
+    // Image preview area
+    if (evidenceUri != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .background(Color(0xFFF7F8FA), RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Image(
+                    image = androidx.compose.ui.model.ImageBitmap(imageUri = evidenceUri),
+                    contentDescription = "Selected evidence photo",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = androidx.compose.foundation.image.ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Image selected",
+                    fontSize = 13.sp,
+                    color = Color(0xFF1A1A2E)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onImageRemoved,
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFDECEE)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Remove Image", fontWeight = FontWeight.SemiBold, color = Color(0xFFD64550))
+        }
+    } else {
+        Button(
+            onClick = { /* launcher will be called from parent */ },
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Upload Image", fontWeight = FontWeight.SemiBold)
+        }
+        Text("Tap to select a photo from your device.", fontSize = 11.sp, color = LabelGray)
     }
-    Text("Upload pending backend integration.", fontSize = 11.sp, color = LabelGray)
 }
 
 @Composable

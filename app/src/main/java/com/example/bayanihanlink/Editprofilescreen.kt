@@ -1,5 +1,6 @@
 package com.example.bayanihanlink
 
+import com.example.bayanihanlink.api.ChangePasswordRequest
 import com.example.bayanihanlink.api.RetrofitClient
 import com.example.bayanihanlink.api.UpdateProfileRequest
 import com.example.bayanihanlink.api.UserResponse
@@ -23,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -41,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -54,6 +57,7 @@ private val ButtonCorner = 12.dp
 fun EditProfileScreen(
     userId: String,
     user: UserProfile,
+    authToken: String = "",
     onBack: () -> Unit = {},
     // Called with the FRESH user data once the backend confirms the save
     // worked — MainActivity uses this to update what's shown everywhere else.
@@ -65,6 +69,8 @@ fun EditProfileScreen(
     var fullName by remember { mutableStateOf(user.fullName) }
     var email by remember { mutableStateOf(user.email) }
     var contactNumber by remember { mutableStateOf(user.contactNumber) }
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
     var isSaving by remember { mutableStateOf(false) }
 
     // The address can't be changed here, so it always comes from the user we
@@ -74,8 +80,8 @@ fun EditProfileScreen(
     // The Save button only turns on once something is actually different
     // from what the profile already shows.
     val hasChanges = fullName.trim() != user.fullName.trim() ||
-        email.trim() != user.email.trim() ||
-        contactNumber.trim() != user.contactNumber.trim()
+        contactNumber.trim() != user.contactNumber.trim() ||
+        newPassword.isNotBlank()
 
     Column(
         modifier = Modifier
@@ -97,12 +103,18 @@ fun EditProfileScreen(
         ) {
             EditField("FULL NAME", fullName, { fullName = it })
             Spacer(modifier = Modifier.height(16.dp))
-            EditField("EMAIL ADDRESS", email, { email = it }, keyboardType = KeyboardType.Email)
+            // Email and address cannot be changed — they are shown as read-only.
+            EditField("EMAIL ADDRESS", email, {}, enabled = false, keyboardType = KeyboardType.Email)
             Spacer(modifier = Modifier.height(16.dp))
             EditField("CONTACT NUMBER", contactNumber, { contactNumber = it }, keyboardType = KeyboardType.Phone)
             Spacer(modifier = Modifier.height(16.dp))
             // The address is read-only, so this field has no onValueChange.
             EditField("ADDRESS/LOCATION", address, {}, enabled = false)
+            Spacer(modifier = Modifier.height(16.dp))
+            // Optional password change — fill both fields to change your password.
+            EditField("CURRENT PASSWORD", currentPassword, { currentPassword = it }, isPassword = true)
+            Spacer(modifier = Modifier.height(16.dp))
+            EditField("NEW PASSWORD", newPassword, { newPassword = it }, isPassword = true)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -126,10 +138,9 @@ fun EditProfileScreen(
                     // Simple validation, same step-by-step pattern as Register.
                     val errorMessage: String? = when {
                         fullName.trim().isEmpty() -> "Please enter your full name."
-                        email.trim().isEmpty() -> "Please enter your email."
-                        !email.contains("@") || !email.contains(".") -> "Please enter a valid email."
                         contactNumber.trim().isEmpty() -> "Please enter your contact number."
-                        address.trim().isEmpty() -> "Please enter your address."
+                        newPassword.isNotBlank() && currentPassword.isEmpty() -> "Please enter your current password."
+                        newPassword.isNotBlank() && newPassword.length < 6 -> "New password must be at least 6 characters."
                         else -> null
                     }
 
@@ -139,6 +150,7 @@ fun EditProfileScreen(
                         isSaving = true
                         coroutineScope.launch {
                             try {
+                                // Update profile (name + contact). Email and address are read-only so they stay the same.
                                 val updated = RetrofitClient.api.updateProfile(
                                     id = userId,
                                     request = UpdateProfileRequest(
@@ -146,8 +158,23 @@ fun EditProfileScreen(
                                         email = email.trim(),
                                         contactNumber = contactNumber.trim(),
                                         address = address.trim()
-                                    )
+                                    ),
+                                    userIdHeader = userId,
+                                    authHeader = if (authToken.isNullOrBlank()) null else "Bearer $authToken",
+                                    authTokenHeader = authToken
                                 )
+
+                                // If a new password was provided, change the password too.
+                                if (newPassword.isNotBlank()) {
+                                    RetrofitClient.api.changePassword(
+                                        ChangePasswordRequest(
+                                            userId = userId,
+                                            currentPassword = currentPassword,
+                                            newPassword = newPassword
+                                        )
+                                    )
+                                }
+
                                 Toast.makeText(context, "Profile updated!", Toast.LENGTH_LONG).show()
                                 onSaved(updated)
                             } catch (error: Exception) {
@@ -181,7 +208,8 @@ private fun EditField(
     value: String,
     onValueChange: (String) -> Unit,
     keyboardType: KeyboardType = KeyboardType.Text,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isPassword: Boolean = false
 ) {
     Column {
         Text(label, fontSize = 11.sp, color = LabelGray)
@@ -197,6 +225,7 @@ private fun EditField(
             },
             singleLine = true,
             enabled = enabled,
+            visualTransformation = if (isPassword) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             shape = RoundedCornerShape(12.dp),

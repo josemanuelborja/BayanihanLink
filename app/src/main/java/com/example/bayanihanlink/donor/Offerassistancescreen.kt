@@ -63,6 +63,7 @@ fun OfferAssistanceScreen(
     needTitle: String = "Typhoon Assistance",
     needItemName: String = "",
     needQuantity: String = "",
+    needContact: String = "",
     onBack: () -> Unit = {},
     onViewMyOffers: () -> Unit = {},
     onBackToNeedsBoard: () -> Unit = {},
@@ -70,12 +71,13 @@ fun OfferAssistanceScreen(
 ) {
     val context = LocalContext.current
 
-    // Form fields
+    // Form fields — pre-fill contact from the donor's profile so they don't
+    // have to re-enter it every time.
     var itemProvided by remember { mutableStateOf(needItemName) }
     var quantityAvailable by remember { mutableStateOf("") }
     var unit by remember { mutableStateOf(unitOptions.first()) }
     var description by remember { mutableStateOf("") }
-    var preferredContact by remember { mutableStateOf("") }
+    var preferredContact by remember { mutableStateOf(needContact) }
     var additionalNotes by remember { mutableStateOf("") }
 
     // Once the offer is submitted, we show the success screen instead of the form.
