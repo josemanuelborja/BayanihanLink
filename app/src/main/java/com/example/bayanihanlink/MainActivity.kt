@@ -973,8 +973,9 @@ fun BayanihanLinkApp() {
                                 val offers = RetrofitClient.api.getOffersByUser(user.id, user.id, if (user.authToken.isNullOrBlank()) null else "Bearer ${user.authToken}", user.authToken)
                                 userOffers.clear()
                                 userOffers.addAll(offers)
+                                loadNotifications()
                             } catch (_: Exception) {}
-                            currentScreen = AppScreen.MyOffers
+                            currentScreen = AppScreen.DonorAlerts
                         } catch (error: Exception) {
                             Toast.makeText(context, readableErrorMessage(error), Toast.LENGTH_LONG).show()
                         }
